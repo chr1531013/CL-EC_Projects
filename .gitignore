@@ -1,0 +1,19 @@
+# Windows
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Editor
+.vscode/
+.idea/
+*.suo
+*.user
+
+# Environment
+.env
+.env.local
+
+# Dependencies
+node_modules/
+__pycache__/
+*.pyc

@@ -1,0 +1,1257 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>eco-bahia · Planificador de Conservación</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.2/sql-wasm.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Cormorant+Garamond:wght@600;700&display=swap');
+@font-face{font-family:'Argent CF';src:local('Argent CF'),local('ArgentCF-Bold'),local('Argent-CF');font-weight:700;font-style:normal}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#faf6e4;--surface:#fff;--border:#ebedee;--ink:#342707;--muted:#739d9b;
+  --forest:#083231;--forest2:#315947;--forest3:#739d9b;
+  --sun:#ffda70;--sun2:#ffda70;--warn:#c0392b;--info:#739d9b;
+  --accent-green:#d3fda0;--accent-teal:#baede6;--accent-pink:#fdcdc1;--accent-rose:#ffa0b6;
+  --r:7px;--panel:290px;--hdr:56px;
+}
+html,body{height:100%;overflow:hidden}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--ink);display:flex;flex-direction:column;font-size:14px}
+
+/* ── ENCABEZADO ── */
+#hdr{height:var(--hdr);flex-shrink:0;background:var(--forest);display:flex;align-items:center;padding:0 1rem;gap:.6rem;border-bottom:3px solid var(--sun);z-index:200;flex-wrap:nowrap}
+.hdr-logo{font-family:'Inter',sans-serif;font-weight:600;font-size:.95rem;color:#fff;white-space:nowrap;margin-right:.4rem;display:flex;align-items:center;gap:.45rem}
+.hdr-logo span{color:var(--sun)}
+.hdr-brand{font-family:'Argent CF','Cormorant Garamond',Georgia,serif;font-weight:700;font-size:1.05rem;letter-spacing:.03em;text-transform:lowercase}
+.hdr-sep{width:1px;height:22px;background:rgba(255,255,255,.15);flex-shrink:0}
+.hdr-btn{font-family:'Inter',sans-serif;font-size:.58rem;letter-spacing:.1em;text-transform:uppercase;padding:.32rem .75rem;border-radius:20px;border:1.5px solid rgba(255,255,255,.22);background:transparent;color:#fff;cursor:pointer;transition:all .18s;white-space:nowrap;flex-shrink:0}
+.hdr-btn:hover{background:rgba(255,255,255,.12)}
+.hdr-btn.active-btn,.hdr-btn:active{background:var(--sun);border-color:var(--sun);color:var(--forest);font-weight:600}
+.hdr-btn.patrol-btn{background:rgba(255,218,112,.15);border-color:var(--sun);color:var(--sun)}
+.hdr-btn.patrol-btn:hover{background:var(--sun);color:var(--forest)}
+.hdr-spacer{flex:1}
+.nav-wrap{display:flex;align-items:center;gap:.3rem;flex-shrink:0}
+.nav-btn{background:rgba(255,255,255,.1);border:none;color:#fff;width:26px;height:26px;border-radius:50%;cursor:pointer;font-size:.8rem;display:flex;align-items:center;justify-content:center;transition:background .15s;flex-shrink:0}
+.nav-btn:hover{background:rgba(255,255,255,.22)}
+#periodLbl{font-family:'Inter',sans-serif;font-size:.63rem;letter-spacing:.05em;color:var(--accent-teal);min-width:165px;text-align:center}
+
+/* ── CUERPO ── */
+#app{flex:1;display:flex;overflow:hidden}
+
+/* ── BIBLIOTECA ── */
+#lib{width:var(--panel);flex-shrink:0;background:var(--surface);border-right:2px solid var(--border);display:flex;flex-direction:column;overflow:hidden;transition:width .22s,border .22s}
+#lib.hide{width:0;border:none}
+#lib-hd{padding:.75rem .85rem .6rem;border-bottom:1px solid var(--border);background:var(--bg);flex-shrink:0}
+#lib-hd h2{font-family:'Inter',sans-serif;font-size:.82rem;font-weight:700;margin-bottom:.45rem}
+#lib-search{width:100%;padding:.38rem .65rem;border:1.5px solid var(--border);border-radius:5px;font-family:'Inter',sans-serif;font-size:.75rem;background:#fff;color:var(--ink)}
+#lib-search:focus{outline:none;border-color:var(--forest)}
+#lib-body{flex:1;overflow-y:auto;padding:.55rem .7rem}
+.lp-head{font-family:'Inter',sans-serif;font-size:.56rem;letter-spacing:.12em;text-transform:uppercase;padding:.28rem .45rem;border-radius:4px;margin-bottom:.35rem;cursor:pointer;display:flex;align-items:center;justify-content:space-between;user-select:none}
+.lp-head .arr{transition:transform .18s;font-size:.65rem}
+.lp-head.shut .arr{transform:rotate(-90deg)}
+.lp-tasks{overflow:hidden}
+.lib-card{background:#fff;border:1.5px solid var(--border);border-radius:6px;padding:.4rem .55rem;margin-bottom:.3rem;cursor:grab;user-select:none;border-left-width:3px;transition:box-shadow .12s,transform .12s;position:relative}
+.lib-card:hover{box-shadow:0 3px 9px rgba(0,0,0,.09);transform:translateY(-1px)}
+.lib-card.dragging{opacity:.45;transform:scale(.96)}
+.lib-card .lc-name{font-size:.7rem;font-weight:600;line-height:1.3;padding-right:2.4rem}
+.lib-card .lc-meta{font-family:'Inter',sans-serif;font-size:.54rem;color:var(--muted);margin-top:2px}
+.lib-card .lc-actions{position:absolute;top:.3rem;right:.35rem;display:flex;gap:2px;opacity:0;transition:opacity .15s}
+.lib-card:hover .lc-actions{opacity:1}
+.lc-btn{background:none;border:none;cursor:pointer;font-size:.75rem;padding:2px 3px;border-radius:3px;line-height:1;color:var(--muted);transition:color .12s,background .12s}
+.lc-btn:hover{background:var(--border)}
+.lc-btn.del:hover{color:var(--warn);background:var(--accent-pink)}
+.lib-card.prio{border-left-color:var(--sun)!important}
+#lib-ft{padding:.6rem .7rem;border-top:1px solid var(--border);flex-shrink:0}
+.add-lib-btn{width:100%;padding:.48rem;border:2px dashed var(--border);border-radius:5px;background:none;color:var(--muted);font-family:'Inter',sans-serif;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;transition:all .18s}
+.add-lib-btn:hover{border-color:var(--forest);color:var(--forest);background:var(--bg)}
+
+/* ── PRINCIPAL ── */
+#main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
+#leg{display:flex;gap:.6rem;flex-wrap:wrap;align-items:center;padding:.45rem 1.1rem;background:#fff;border-bottom:1px solid var(--border);flex-shrink:0}
+.leg-i{display:flex;align-items:center;gap:.32rem;font-size:.67rem}
+.leg-dot{width:9px;height:9px;border-radius:50%}
+#tbar{display:flex;align-items:center;gap:.5rem;padding:.42rem 1.1rem;background:var(--bg);border-bottom:1px solid var(--border);flex-shrink:0}
+.vpill{font-family:'Inter',sans-serif;font-size:.58rem;letter-spacing:.09em;text-transform:uppercase;padding:.28rem .75rem;border-radius:20px;border:1.5px solid var(--border);background:none;color:var(--muted);cursor:pointer;transition:all .14s}
+.vpill.on{background:var(--forest);border-color:var(--forest);color:#fff}
+#tbar-hint{font-family:'Inter',sans-serif;font-size:.56rem;color:var(--muted);margin-left:auto;letter-spacing:.04em}
+#sched-wrap{flex:1;overflow:auto;padding:.9rem 1.1rem}
+
+/* ── CUADRÍCULA SEMANAL ── */
+.wk-grid{display:grid;min-width:680px;gap:1px;background:var(--border);border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
+.wk-corner{background:var(--forest)}
+.wk-dh{background:var(--forest);color:#fff;text-align:center;padding:.5rem .2rem;font-family:'Inter',sans-serif;font-size:.58rem;letter-spacing:.07em;text-transform:uppercase;line-height:1.6}
+.wk-dh.tod{background:var(--sun);color:var(--forest)}
+.wk-ml{background:var(--bg);padding:.55rem .75rem;display:flex;flex-direction:column;justify-content:center;border-right:3px solid transparent}
+.wk-ml .mn{font-size:.7rem;font-weight:600}
+.wk-ml .mr{font-family:'Inter',sans-serif;font-size:.53rem;color:var(--muted);text-transform:uppercase;margin-top:1px}
+.wk-cell{background:#fff;padding:.28rem;min-height:70px;position:relative;vertical-align:top;transition:background .1s}
+.wk-cell.off-day{background:var(--border)}
+.wk-cell.manual-off{background:var(--accent-pink);position:relative}
+.wk-cell.manual-off::after{content:'LIBRE';position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-family:'Inter',sans-serif;font-size:.55rem;color:#ccc;pointer-events:none}
+.wk-cell.dov{background:var(--accent-teal)!important;outline:2px dashed var(--forest2);outline-offset:-2px}
+.off-lbl{font-family:'Inter',sans-serif;font-size:.52rem;color:#ccc;padding:.2rem}
+.drop-ph{display:flex;align-items:center;justify-content:center;height:100%;min-height:50px;font-family:'Inter',sans-serif;font-size:.54rem;color:#ddd;letter-spacing:.04em;pointer-events:none;position:absolute;inset:0}
+.gc{border-radius:4px;padding:.26rem .38rem;margin-bottom:3px;font-size:.59rem;line-height:1.3;cursor:pointer;border-left:3px solid transparent;display:flex;align-items:flex-start;justify-content:space-between;gap:3px;position:relative}
+.gc:hover{filter:brightness(.93)}
+.gc .gn{font-weight:600;flex:1;line-height:1.3}
+.gc .gd{font-family:'Inter',sans-serif;font-size:.5rem;opacity:.68;display:block;margin-top:1px}
+.gc .gx{opacity:0;background:none;border:none;cursor:pointer;font-size:.72rem;color:rgba(0,0,0,.35);padding:0 1px;line-height:1;transition:opacity .12s;flex-shrink:0}
+.gc:hover .gx{opacity:1}
+.gc .gx:hover{color:var(--warn)}
+.off-toggle{position:absolute;top:2px;right:2px;background:none;border:none;cursor:pointer;font-size:.65rem;color:#ccc;opacity:0;transition:opacity .12s;padding:2px;border-radius:3px;z-index:2}
+.wk-cell:hover .off-toggle,.wk-cell.manual-off .off-toggle{opacity:1}
+.off-toggle:hover{color:var(--warn);background:var(--accent-pink)}
+
+/* ── MENSUAL ── */
+.mo-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:1px;background:var(--border);border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
+.mo-hd{background:var(--forest);color:#fff;text-align:center;padding:.48rem;font-family:'Inter',sans-serif;font-size:.58rem;letter-spacing:.08em;text-transform:uppercase}
+.mo-cell{background:#fff;min-height:82px;padding:.35rem .3rem}
+.mo-cell.out{background:var(--bg)}
+.mo-cell.tod{outline:2px solid var(--sun);outline-offset:-2px}
+.mo-num{font-family:'Inter',sans-serif;font-size:.66rem;font-weight:600;color:var(--muted);margin-bottom:.2rem}
+.mo-cell.tod .mo-num{color:var(--sun)}
+.mo-pill{font-size:.53rem;border-radius:3px;padding:1px 4px;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-left:2px solid transparent;font-weight:500}
+.mo-more{font-family:'Inter',sans-serif;font-size:.52rem;color:var(--muted)}
+
+/* ── PANELES LATERALES ── */
+.side-panel{position:fixed;top:0;right:-620px;width:420px;height:100vh;background:#fff;border-left:2px solid var(--border);box-shadow:-5px 0 28px rgba(0,0,0,.1);transition:right .25s;z-index:300;display:flex;flex-direction:column}
+.side-panel.open{right:0}
+.sp-hd{background:var(--forest);color:#fff;padding:1rem 1.2rem;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.sp-hd h2{font-family:'Inter',sans-serif;font-size:1rem;font-weight:700}
+.sp-close{background:none;border:none;color:#fff;font-size:1.3rem;cursor:pointer;line-height:1}
+.sp-body{flex:1;overflow-y:auto;padding:1rem 1.2rem}
+
+/* ── PANEL DE EQUIPO ── */
+.mb-card{border:1.5px solid var(--border);border-radius:7px;padding:.75rem;margin-bottom:.75rem;position:relative}
+.mb-card-hd{display:flex;align-items:center;gap:.6rem;margin-bottom:.65rem}
+.mb-av{width:32px;height:32px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:.75rem;font-weight:700;color:#fff;cursor:pointer;border:2px solid var(--border);transition:opacity .15s}
+.mb-av:hover{opacity:.82}
+.mb-name-disp{font-size:.82rem;font-weight:600}
+.mb-del{position:absolute;top:.5rem;right:.5rem;background:none;border:none;color:#ccc;cursor:pointer;font-size:.9rem;transition:color .15s}
+.mb-del:hover{color:var(--warn)}
+.f-lbl{font-family:'Inter',sans-serif;font-size:.57rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:.25rem;margin-top:.6rem}
+.f-inp,.f-sel{width:100%;padding:.42rem .65rem;border:1.5px solid var(--border);border-radius:5px;font-family:'Inter',sans-serif;font-size:.78rem;color:var(--ink);background:#fff;transition:border-color .18s}
+.f-inp:focus,.f-sel:focus{outline:none;border-color:var(--forest)}
+.f-row{display:grid;grid-template-columns:1fr 1fr;gap:.6rem}
+.color-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin-top:.25rem}
+.csw{width:100%;aspect-ratio:1;border-radius:4px;cursor:pointer;border:2px solid transparent;transition:border-color .12s}
+.csw:hover,.csw.sel{border-color:var(--ink)}
+.add-mem-btn{width:100%;padding:.5rem;border:2px dashed var(--border);border-radius:6px;background:none;color:var(--muted);font-family:'Inter',sans-serif;font-size:.58rem;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;transition:all .18s;margin-top:.3rem}
+.add-mem-btn:hover{border-color:var(--forest);color:var(--forest);background:var(--bg)}
+.apply-btn{width:100%;padding:.6rem;background:var(--forest);border:none;border-radius:6px;color:#fff;font-family:'Inter',sans-serif;font-size:.62rem;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;margin-top:.8rem;transition:background .18s}
+.apply-btn:hover{background:var(--forest2)}
+
+/* ── MODALES ── */
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(8,50,49,.52);z-index:500;align-items:center;justify-content:center}
+.modal-bg.open{display:flex}
+.modal-box{background:#fff;border-radius:10px;padding:1.6rem;max-width:460px;width:94%;box-shadow:0 18px 55px rgba(0,0,0,.18);position:relative;max-height:90vh;overflow-y:auto}
+.modal-close{position:absolute;top:.85rem;right:.85rem;background:none;border:none;font-size:1.25rem;cursor:pointer;color:#aaa}
+.modal-prog{font-family:'Inter',sans-serif;font-size:.58rem;letter-spacing:.1em;text-transform:uppercase;margin-bottom:.28rem}
+.modal-title{font-family:'Inter',sans-serif;font-size:1.1rem;font-weight:700;margin-bottom:.8rem}
+.modal-row{display:flex;justify-content:space-between;align-items:center;padding:.4rem 0;border-bottom:1px dashed var(--border);font-size:.76rem}
+.modal-row:last-child{border:none}
+.modal-lbl{color:var(--muted);font-family:'Inter',sans-serif;font-size:.58rem}
+.role-checks{display:flex;flex-wrap:wrap;gap:.35rem;margin-top:.28rem}
+.rck{display:flex;align-items:center;gap:.3rem;font-size:.74rem;cursor:pointer}
+.mfoot{display:flex;gap:.55rem;margin-top:1.1rem;justify-content:flex-end}
+.btn-c{font-family:'Inter',sans-serif;font-size:.62rem;letter-spacing:.08em;text-transform:uppercase;padding:.45rem 1rem;border-radius:5px;border:1.5px solid var(--border);background:none;color:var(--muted);cursor:pointer}
+.btn-c:hover{border-color:var(--ink);color:var(--ink)}
+.btn-s{font-family:'Inter',sans-serif;font-size:.62rem;letter-spacing:.08em;text-transform:uppercase;padding:.45rem 1.1rem;border-radius:5px;border:none;background:var(--forest);color:#fff;cursor:pointer;transition:background .18s}
+.btn-s:hover{background:var(--forest2)}
+.btn-danger{background:var(--warn)!important}
+
+/* ── PATRULLA RÁPIDA ── */
+#patrol-modal .modal-box{max-width:380px}
+.patrol-day-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin:.8rem 0}
+.pd-btn{aspect-ratio:1;border-radius:5px;border:1.5px solid var(--border);background:#fff;cursor:pointer;font-family:'Inter',sans-serif;font-size:.58rem;text-align:center;line-height:1.2;transition:all .15s;padding:3px 2px}
+.pd-btn:hover{border-color:var(--forest);background:var(--accent-teal)}
+.pd-btn.sel{background:var(--sun);border-color:var(--sun);color:var(--forest);font-weight:700}
+.patrol-who{margin:.6rem 0}
+.pw-check{display:flex;align-items:center;gap:.4rem;font-size:.76rem;padding:.25rem 0;cursor:pointer}
+.pw-check input{width:14px;height:14px}
+
+/* ── REPORTE ── */
+#report-panel{width:520px;right:-640px}
+#report-panel.open{right:0}
+.rpt-section{margin-bottom:1.2rem}
+.rpt-hd{font-family:'Inter',sans-serif;font-size:.9rem;font-weight:700;margin-bottom:.5rem;display:flex;align-items:center;gap:.5rem}
+.rpt-table{width:100%;border-collapse:collapse;font-size:.72rem}
+.rpt-table th{background:var(--bg);padding:.4rem .6rem;text-align:left;font-family:'Inter',sans-serif;font-size:.56rem;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);border-bottom:2px solid var(--border)}
+.rpt-table td{padding:.38rem .6rem;border-bottom:1px solid var(--border);vertical-align:top}
+.rpt-table tr:hover td{background:var(--bg)}
+.copy-box{background:var(--bg);border-radius:6px;padding:.8rem;font-family:'Inter',sans-serif;font-size:.65rem;line-height:1.8;white-space:pre-wrap;max-height:240px;overflow-y:auto;border:1px solid var(--border)}
+.copy-btn{font-family:'Inter',sans-serif;font-size:.6rem;letter-spacing:.09em;text-transform:uppercase;padding:.38rem .9rem;border-radius:5px;border:1.5px solid var(--border);background:#fff;cursor:pointer;transition:all .15s;margin-top:.5rem}
+.copy-btn:hover{border-color:var(--forest);color:var(--forest)}
+.rpt-summary-pills{display:flex;gap:.4rem;flex-wrap:wrap;margin-top:.35rem}
+.rpt-pill{font-size:.65rem;padding:.2rem .55rem;border-radius:20px;font-family:'Inter',sans-serif}
+.print-btn{font-family:'Inter',sans-serif;font-size:.6rem;letter-spacing:.09em;text-transform:uppercase;padding:.38rem .9rem;border-radius:5px;border:none;background:var(--forest);color:#fff;cursor:pointer}
+.print-btn:hover{background:var(--forest2)}
+.mini-grid-wrap{overflow:hidden;border-radius:var(--r);border:1px solid var(--border)}
+.mini-grid-wrap .wk-grid{zoom:.68;pointer-events:none;user-select:none}
+
+/* puntos de miembro */
+.wdots{display:flex;gap:3px;flex-wrap:wrap}
+.wdot{width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.49rem;font-weight:700;color:#fff}
+
+/* ── NOTIFICACIÓN ── */
+#toast{position:fixed;bottom:1.3rem;right:1.3rem;z-index:999;background:var(--forest);color:#fff;font-family:'Inter',sans-serif;font-size:.65rem;letter-spacing:.08em;padding:.6rem 1rem;border-radius:6px;box-shadow:0 4px 16px rgba(0,0,0,.18);transform:translateY(65px);opacity:0;transition:all .28s;pointer-events:none}
+#toast.show{transform:none;opacity:1}
+#toast.warn{background:var(--warn)}
+
+/* ── FANTASMA DE ARRASTRE ── */
+#dg{position:fixed;pointer-events:none;z-index:9999;display:none;max-width:170px;padding:.38rem .55rem;border-radius:5px;font-size:.63rem;font-weight:600;box-shadow:0 6px 20px rgba(0,0,0,.18);opacity:.9}
+
+/* ── ESTADO DE GUARDADO ── */
+#save-dot{width:7px;height:7px;border-radius:50%;background:var(--forest2);flex-shrink:0;transition:background .3s}
+#save-dot.saving{background:var(--sun)}
+#save-dot.err{background:var(--warn)}
+
+/* ── LOGO ── */
+.eco-logo{display:block;fill:currentColor;flex-shrink:0}
+.eco-logo--hdr{height:30px;width:40px}
+.eco-logo--panel{height:22px;width:22px}
+.eco-logo--modal{height:44px;width:44px;color:var(--forest)}
+.modal-brand{display:flex;justify-content:center;margin-bottom:.9rem;padding-bottom:.75rem;border-bottom:1px solid var(--border)}
+
+/* ── IMPRESIÓN ── */
+@media print{
+  /* hide the whole app — only the report panel goes to paper */
+  #hdr,#lib,#app,#team-panel,#toast,#dg,.modal-bg,.sp-close{display:none!important}
+  html,body{overflow:visible!important;height:auto!important}
+  /* pull the panel out of fixed positioning so it flows as a normal page */
+  #report-panel{position:static!important;right:auto!important;width:100%!important;
+    height:auto!important;box-shadow:none!important;border:none!important;overflow:visible!important}
+  .sp-body{overflow:visible!important;height:auto!important;flex:none!important}
+}
+</style>
+</head>
+<body>
+
+<!-- ECO-BAHIA LOGO SPRITE -->
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true">
+  <defs>
+    <symbol id="eco-logo-sym" viewBox="0 0 160.93079 168.6342">
+      <g transform="translate(-21.509394,-50.599551)">
+        <path fill="currentColor" stroke="none" d="m 61.82006,119.75524 c 2.783085,-0.60983 6.556651,0.86892 9.399229,1.17581 6.300889,0.68025 12.685624,0.94953 18.998456,0.26841 1.710044,-0.18451 7.488986,-2.08556 7.69289,0.77289 0.161622,2.26577 -3.431093,5.30378 -4.800381,6.81802 -5.848433,6.46758 -13.382709,11.21585 -21.091025,15.10002 -2.102614,1.05949 -4.86573,1.69673 -6.753776,3.08781 -0.911729,0.67174 -0.824353,2.2188 0.166037,2.77072 1.453117,0.80978 4.162999,0.63782 5.787799,0.64055 3.899966,0.007 7.699375,0.16415 11.599061,-0.34633 14.018291,-1.83497 26.99933,-7.88578 35.56623,-19.60623 2.76863,-3.78779 5.04794,-7.94598 6.82816,-12.294 0.91165,-2.22665 1.38052,-5.2943 2.73233,-7.25532 1.05428,-1.5294 2.9574,-2.66734 4.46924,-3.69446 3.38027,-2.29648 7.46727,-5.62026 11.39907,-6.78583 -0.34897,1.26541 -1.44976,2.24517 -2.28468,3.22465 -2.03932,2.39241 -4.89873,4.85873 -6.3609,7.65856 -0.77374,1.4816 -0.0584,3.29633 0.16063,4.83699 0.29305,2.06159 0.25121,4.37496 0.0517,6.44931 -0.64461,6.70189 -3.15593,13.36209 -6.11618,19.34794 -0.68825,1.39169 -3.23445,5.8934 -0.0492,6.2092 1.17263,0.11626 2.45834,-0.91933 3.39956,-1.51017 2.62103,-1.64529 5.01462,-3.50509 7.19942,-5.70674 7.45505,-7.51262 11.53833,-18.01325 11.79611,-28.61882 0.0854,-3.5134 -0.054,-6.99132 -0.43022,-10.48014 -0.15256,-1.4149 -0.91144,-3.24946 -0.38809,-4.635435 0.4491,-1.189334 1.67757,-1.876399 2.62108,-2.622994 1.43345,-1.134242 2.74169,-2.482379 3.98179,-3.826322 3.51037,-3.804345 6.47399,-8.749234 8.53232,-13.503247 2.52719,-5.836878 4.741,-11.653963 5.92359,-17.937149 0.41087,-2.182975 1.36156,-5.405134 -0.84005,-6.858618 -1.60208,-1.057685 -3.74097,-1.393812 -5.59862,-1.660684 -9.2567,-1.329846 -17.79051,5.12991 -21.10831,13.557827 -1.17496,2.984625 -1.33954,5.919997 -1.49787,9.069345 -0.0505,1.00399 -0.50688,2.089942 -1.59201,2.322236 -0.99635,0.213289 -1.85379,-0.728717 -2.59963,-1.24455 -1.90632,-1.318468 -3.93218,-2.411911 -5.99951,-3.44626 C 126.6591,68.05266 119.81206,66.4121 113.21589,65.776454 94.124818,63.936716 73.865093,70.360171 62.688821,86.904049 60.1041,90.73013 57.903135,94.829395 56.358938,99.198053 c -0.79449,2.247677 -1.154506,6.202677 -2.640836,8.019347 -0.927035,1.13308 -2.945607,1.75381 -4.297026,2.17154 -3.619434,1.11878 -7.215876,1.70004 -10.999101,1.70004 -0.841194,0 -5.120458,-0.70713 -4.964414,0.61644 0.132348,1.12249 1.944333,2.42773 2.76459,3.078 3.646947,2.8912 8.233023,3.35596 12.598974,2.09162 0.864179,-0.25025 5.097473,-2.36562 5.049288,-0.34073 -0.04316,1.81282 -4.089343,3.35368 -5.449258,3.98059 -6.092858,2.80878 -12.964424,4.07542 -19.598399,4.69703 -1.910683,0.17903 -3.911402,0.19693 -5.799531,0.50712 -0.794701,0.13057 -1.882905,0.43514 -1.390473,1.4932 1.189457,2.55575 6.123259,3.65454 8.589888,4.15182 4.385663,0.88417 8.583273,0.60516 12.998944,0.30012 4.800826,-0.33165 9.737507,-0.64596 14.398827,-1.97498 2.816993,-0.80317 5.559807,-1.75973 7.999347,-3.4335 0.700886,-0.48087 2.02638,-1.27572 2.02638,-2.25941 0,-0.82438 -1.02813,-1.12128 -1.62641,-1.39149 -1.496156,-0.67573 -3.184545,-1.52407 -4.199658,-2.84957 m 96.39214,-62.811593 c 3.66632,-0.552589 4.72169,5.147033 0.99992,5.732405 -3.92205,0.616875 -4.99233,-5.13066 -0.99992,-5.732405 m 15.59873,76.443283 c -3.18731,0.91271 -3.58184,4.15784 -2.73017,6.92549 1.20089,3.90249 4.38949,6.5462 5.83717,10.27859 0.80691,2.0804 0.62014,4.47922 -1.50991,5.65995 -1.84246,1.02129 -3.25313,-0.52144 -4.18377,-2.03221 -1.71524,-2.78449 -3.34884,-12.02741 -8.61164,-8.33317 -4.53285,3.18186 0.89182,9.59217 3.07877,12.36399 0.68033,0.86228 2.32745,2.58242 1.9506,3.81045 -0.30548,0.99557 -1.59717,1.38425 -2.43035,0.87615 -2.19664,-1.33957 -2.45367,-4.63588 -4.80038,-5.74018 -1.51295,-0.71195 -3.6599,0.39589 -3.95307,2.06128 -0.22956,1.30404 0.40765,2.60046 1.1388,3.62774 0.97239,1.36622 2.59249,2.52036 3.30034,4.03082 0.69567,1.48446 -0.36961,3.09193 -1.88518,3.42029 -1.89957,0.41155 -3.83016,-1.51335 -4.93957,-2.81567 -4.20469,-4.93586 -2.45057,-9.70737 -2.45984,-15.51866 -0.003,-2.09721 -1.16257,-5.78778 -3.99889,-4.34183 -2.00583,1.02256 -2.28352,3.7724 -1.86683,5.75263 0.24355,1.15738 0.96729,2.32237 0.16326,3.41734 -2.53279,3.44931 -8.53,0.0254 -11.8961,1.31234 -1.97665,0.75572 -4.14054,2.88419 -2.79792,5.14568 1.61449,2.7194 3.82488,1.29977 6.19764,1.04283 1.6728,-0.18112 3.47906,0.15449 4.99959,0.86993 0.91288,0.42953 2.38593,1.21889 2.60566,2.3196 0.2218,1.11115 -1.13991,1.6555 -2.0057,1.62476 -2.26729,-0.0805 -5.68776,-0.30882 -5.10298,3.21237 0.61762,3.71896 5.6052,3.61184 8.30271,4.81211 1.97997,0.88098 2.77125,2.71391 1.5988,4.66032 -1.74192,2.89181 -6.74625,5.14585 -9.00421,1.61218 -2.01347,-3.15108 0.34517,-9.80431 -5.19355,-10.06882 -0.60124,-0.0287 -1.21576,-0.0101 -1.79986,0.14588 -0.82987,0.22156 -1.57847,0.65488 -2.17807,1.27579 -1.55431,1.60955 -0.77461,3.56064 0.24149,5.2211 0.46021,0.75203 1.48331,2.10057 0.81291,2.98455 -0.68142,0.89848 -1.81259,-0.002 -2.47603,-0.45005 -1.53929,-1.04076 -4.51105,-1.91439 -5.4511,0.49172 -1.54404,3.95203 4.73289,8.33304 0.25152,11.55766 -0.59785,0.43019 -1.30098,0.71187 -1.99984,0.92684 -1.60589,0.49398 -3.89417,0.67598 -4.72816,-1.20209 -1.22165,-2.75097 4.46695,-5.87612 2.08269,-8.20626 -2.34599,-2.29278 -6.8505,2.74142 -8.7536,3.85058 -1.22079,0.71149 -3.15618,1.0603 -3.49201,-0.88361 -0.20356,-1.17832 1.10811,-2.44987 1.89507,-3.13616 2.23886,-1.95249 10.60663,-5.11179 7.08492,-9.32206 -2.66307,-3.18375 -7.03737,-0.8798 -9.28767,1.37332 -0.88315,0.88424 -2.77562,2.98292 -4.12081,1.72584 -0.98002,-0.91582 -0.59816,-2.30958 -0.0419,-3.33802 1.58078,-2.92304 5.85531,-9.23196 0.76306,-11.44258 -0.54611,-0.23708 -1.20492,-0.37378 -1.79985,-0.35566 -4.483164,0.13654 -4.565151,5.15853 -3.594768,8.37204 0.353788,1.17163 1.037706,3.48453 -0.426666,4.21806 -1.191279,0.59674 -2.659196,-1.17806 -3.251128,-2.00111 -2.095003,-2.91292 -2.735422,-7.377 -7.126271,-7.25236 -1.014985,0.0288 -2.023545,0.41397 -2.669233,1.24345 -1.779354,2.28586 0.407816,5.29939 2.07715,6.81508 3.76049,3.41433 8.143373,5.08524 10.442976,9.8755 0.443181,0.92317 1.136003,1.96517 1.168731,3.02312 0.04686,1.51451 -1.690611,2.0276 -2.819525,1.4268 -2.29952,-1.22379 -3.180478,-5.1713 -6.000275,-5.41159 -2.238576,-0.19076 -5.112159,2.8293 -3.659117,4.98954 1.570342,2.33465 5.162944,2.59367 6.612426,5.04941 0.967095,1.63849 -0.987117,2.91706 -2.353358,3.32962 -0.858737,0.25932 -1.709334,0.29979 -2.599794,0.28941 -8.473842,-0.0988 -4.995236,-12.62167 -5.381813,-17.93637 -0.13358,-1.83655 -0.449266,-3.92309 -2.025601,-5.11146 -0.735293,-0.55432 -1.68235,-0.8533 -2.591766,-0.91642 -0.674644,-0.0468 -1.353944,0.0239 -1.999843,0.22767 -5.46742,1.72484 -0.614864,8.54277 -0.6558,12.04783 -0.01345,1.14802 -1.079595,1.80287 -2.143967,1.5243 -1.945157,-0.50909 -2.554314,-3.06344 -2.97445,-4.7488 -1.166358,-4.67882 -1.785923,-14.33596 -8.824591,-12.54392 -0.677501,0.1725 -1.391827,0.40997 -1.999835,0.7603 -5.142022,2.9627 0.247312,9.59891 2.600398,12.58978 l 1.75928,2.21695 c 0.743176,0.93617 1.496412,1.86509 2.213859,2.82157 1.199857,1.59966 4.202636,5.28455 1.025076,6.48586 -1.953343,0.73847 -3.421222,-0.69092 -4.385762,-2.2535 -1.887154,-3.05723 -2.429774,-7.37207 -5.220713,-9.80925 -2.115433,-1.84732 -6.564301,-1.99416 -8.250717,0.53914 -1.594355,2.39501 0.04429,6.23316 1.51716,8.26241 3.995565,5.50481 10.355244,10.15324 15.940833,13.90633 21.103451,14.1799 48.281874,16.41795 71.594164,6.64851 20.55269,-8.61296 37.22043,-27.16281 43.36822,-48.77058 2.30413,-8.09836 3.67131,-16.22538 0.9615,-24.38646 -0.98057,-2.95313 -3.23143,-7.84112 -7.13275,-6.72395 z"/>
+      </g>
+    </symbol>
+  </defs>
+</svg>
+
+<!-- ENCABEZADO -->
+<div id="hdr">
+  <div class="hdr-logo">
+    <svg class="eco-logo eco-logo--hdr" aria-hidden="true"><use href="#eco-logo-sym"/></svg>
+    <span class="hdr-brand">eco-bahia</span><span> · Conservación</span>
+  </div>
+  <div class="hdr-sep"></div>
+  <button class="hdr-btn active-btn" id="libToggle">◧ Biblioteca</button>
+  <button class="hdr-btn patrol-btn" id="patrolBtn">⭐ Patrulla</button>
+  <button class="hdr-btn" id="teamBtn">👥 Equipo</button>
+  <button class="hdr-btn" id="reportBtn">📋 Reporte</button>
+  <div class="hdr-sep"></div>
+  <button class="hdr-btn" id="exportBtn">⬇ Exportar</button>
+  <label class="hdr-btn" id="importLbl" style="cursor:pointer">⬆ Importar<input type="file" id="importFile" accept=".sqlite,.db" style="display:none"></label>
+  <div class="hdr-spacer"></div>
+  <div title="Estado de guardado automático" id="save-dot"></div>
+  <div class="nav-wrap">
+    <button class="nav-btn" id="prevBtn">&#8592;</button>
+    <div id="periodLbl"></div>
+    <button class="nav-btn" id="nextBtn">&#8594;</button>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <!-- BIBLIOTECA -->
+  <div id="lib">
+    <div id="lib-hd">
+      <h2>Biblioteca de Tareas</h2>
+      <input id="lib-search" placeholder="Buscar tareas…" oninput="renderLib(this.value)">
+    </div>
+    <div id="lib-body"></div>
+    <div id="lib-ft"><button class="add-lib-btn" id="newTaskBtn">+ Nueva Tarea</button></div>
+  </div>
+
+  <!-- PRINCIPAL -->
+  <div id="main">
+    <div id="leg"></div>
+    <div id="tbar">
+      <button class="vpill on" data-v="week">Semana</button>
+      <button class="vpill" data-v="month">Mes</button>
+      <span id="tbar-hint">← Arrastra tareas de la biblioteca sobre el día de cada miembro · ✕ para eliminar · ⊘ para marcar día libre</span>
+    </div>
+    <div id="sched-wrap">
+      <div id="vw-week"></div>
+      <div id="vw-month" style="display:none"></div>
+    </div>
+  </div>
+</div>
+
+<!-- PANEL DE EQUIPO -->
+<div class="side-panel" id="team-panel">
+  <div class="sp-hd">
+    <div style="display:flex;align-items:center;gap:.45rem">
+      <svg class="eco-logo eco-logo--panel" aria-hidden="true"><use href="#eco-logo-sym"/></svg>
+      <h2>Miembros del Equipo</h2>
+    </div>
+    <button class="sp-close" onclick="document.getElementById('team-panel').classList.remove('open')">&times;</button>
+  </div>
+  <div class="sp-body" id="team-body"></div>
+</div>
+
+<!-- PANEL DE REPORTE -->
+<div class="side-panel" id="report-panel">
+  <div class="sp-hd">
+    <div style="display:flex;align-items:center;gap:.45rem">
+      <svg class="eco-logo eco-logo--panel" aria-hidden="true"><use href="#eco-logo-sym"/></svg>
+      <h2>Reporte Semanal</h2>
+    </div>
+    <button class="sp-close" onclick="document.getElementById('report-panel').classList.remove('open')">&times;</button>
+  </div>
+  <div class="sp-body" id="report-body"></div>
+</div>
+
+<!-- MODAL TAREA (agregar/editar) -->
+<div class="modal-bg" id="task-modal">
+  <div class="modal-box">
+    <button class="modal-close" data-modal="task-modal">&times;</button>
+    <div class="modal-brand"><svg class="eco-logo eco-logo--modal" aria-hidden="true"><use href="#eco-logo-sym"/></svg></div>
+    <div class="modal-title" id="tm-title">Nueva Tarea</div>
+    <label class="f-lbl">Nombre de la tarea *</label>
+    <input class="f-inp" id="tm-name" placeholder="Ej. Monitorear calidad del agua">
+    <div class="f-row">
+      <div><label class="f-lbl">Frecuencia</label><input class="f-inp" id="tm-freq" placeholder="diaria, 2×/semana…"></div>
+      <div><label class="f-lbl">Duración</label><input class="f-inp" id="tm-dur" placeholder="45 min"></div>
+    </div>
+    <label class="f-lbl">Programa</label>
+    <select class="f-sel" id="tm-prog">
+      <option value="conservation">🐢 Conservación</option>
+      <option value="restoration">🌱 Restauración</option>
+      <option value="education">🎓 Educación Ambiental</option>
+      <option value="general">⚙️ Operaciones Generales</option>
+    </select>
+    <label class="f-lbl">Roles asignables</label>
+    <div class="role-checks" id="tm-roles"></div>
+    <label class="f-lbl">Notas</label>
+    <input class="f-inp" id="tm-note" placeholder="Condiciones u observaciones opcionales">
+    <div style="display:flex;align-items:center;gap:.45rem;margin-top:.7rem">
+      <input type="checkbox" id="tm-prio" style="width:14px;height:14px">
+      <label for="tm-prio" style="font-size:.76rem;cursor:pointer">⭐ Tarea prioritaria</label>
+    </div>
+    <div class="mfoot">
+      <button class="btn-c" data-modal="task-modal">Cancelar</button>
+      <button class="btn-s" id="tm-save">Guardar Tarea</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL DETALLE DE TAREA -->
+<div class="modal-bg" id="detail-modal">
+  <div class="modal-box">
+    <button class="modal-close" data-modal="detail-modal">&times;</button>
+    <div class="modal-brand"><svg class="eco-logo eco-logo--modal" aria-hidden="true"><use href="#eco-logo-sym"/></svg></div>
+    <div class="modal-prog" id="dm-prog"></div>
+    <div class="modal-title" id="dm-title"></div>
+    <div id="dm-body"></div>
+    <div class="mfoot">
+      <button class="btn-c btn-danger" id="dm-delete">Eliminar Tarea</button>
+      <button class="btn-c" id="dm-edit">✏ Editar</button>
+      <button class="btn-c" data-modal="detail-modal">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL PATRULLA -->
+<div class="modal-bg" id="patrol-modal">
+  <div class="modal-box">
+    <button class="modal-close" data-modal="patrol-modal">&times;</button>
+    <div class="modal-brand"><svg class="eco-logo eco-logo--modal" aria-hidden="true"><use href="#eco-logo-sym"/></svg></div>
+    <div class="modal-title">⭐ Asignación Rápida: Patrulla de Nidos</div>
+    <p style="font-size:.76rem;color:var(--muted);margin-bottom:.6rem">Selecciona el/los día(s) y miembro(s) para asignar la patrulla.</p>
+    <div class="f-lbl" style="margin-top:0">Días de esta semana</div>
+    <div class="patrol-day-grid" id="patrol-days"></div>
+    <div class="f-lbl">Asignar a</div>
+    <div class="patrol-who" id="patrol-who"></div>
+    <div class="mfoot">
+      <button class="btn-c" data-modal="patrol-modal">Cancelar</button>
+      <button class="btn-s" id="patrol-save">Asignar Patrulla</button>
+    </div>
+  </div>
+</div>
+
+<!-- CONFIRMAR ELIMINACIÓN -->
+<div class="modal-bg" id="del-modal">
+  <div class="modal-box" style="max-width:340px">
+    <div class="modal-brand"><svg class="eco-logo eco-logo--modal" aria-hidden="true"><use href="#eco-logo-sym"/></svg></div>
+    <div class="modal-title" style="font-size:1rem">¿Eliminar esta tarea?</div>
+    <p style="font-size:.78rem;color:var(--muted);margin-bottom:1rem">Se eliminará de la biblioteca y de todos los días programados.</p>
+    <div class="mfoot">
+      <button class="btn-c" data-modal="del-modal">Cancelar</button>
+      <button class="btn-s btn-danger" id="del-confirm">Eliminar</button>
+    </div>
+  </div>
+</div>
+
+<!-- CONFIRMAR ELIMINACIÓN DE MIEMBRO -->
+<div class="modal-bg" id="member-del-modal">
+  <div class="modal-box" style="max-width:360px">
+    <div class="modal-brand"><svg class="eco-logo eco-logo--modal" aria-hidden="true"><use href="#eco-logo-sym"/></svg></div>
+    <div class="modal-title" style="font-size:1rem">¿Eliminar miembro?</div>
+    <p style="font-size:.78rem;font-weight:600;margin-bottom:.3rem" id="mdel-name"></p>
+    <p style="font-size:.76rem;color:var(--muted);margin-bottom:1rem" id="mdel-info"></p>
+    <div class="mfoot">
+      <button class="btn-c" data-modal="member-del-modal">Cancelar</button>
+      <button class="btn-s btn-danger" id="member-del-confirm">Eliminar</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+<div id="dg"></div>
+
+<script>
+/* ═══════════════════════════════════════════
+   CONSTANTES Y ESTADO
+═══════════════════════════════════════════ */
+const TODAY = new Date();
+const PALETTE = ['#083231','#315947','#342707','#739d9b','#7b5ea7','#c4704a','#c0392b','#2980b9','#16a085','#8e44ad','#d35400','#27ae60','#2c3e50','#e67e22','#1abc9c','#9b59b6','#f39c12','#34495e'];
+const PROG_META = {
+  conservation:{label:'Conservación',          icon:'🐢',color:'#1a6b35'},
+  restoration: {label:'Restauración',           icon:'🌱',color:'#0c7a8a'},
+  education:   {label:'Educación Ambiental',    icon:'🎓',color:'#a07000'},
+  general:     {label:'Operaciones Generales',  icon:'⚙️',color:'#7a2020'}
+};
+const ROLES = ['coordinador','supervisor','auxiliar_oficina','auxiliar_campo'];
+const ROLES_DISPLAY = {
+  'coordinador':      'Coordinador',
+  'supervisor':       'Supervisor',
+  'auxiliar_oficina': 'Auxiliar de Oficina',
+  'auxiliar_campo':   'Auxiliar de Campo',
+  'all':              'Todos los roles'
+};
+const F1_START = new Date(2026,4,19);
+const SUN_REF  = new Date(2026,4,17);
+
+let TEAM=[], TASKS=[], SCHEDULE={}, MANUAL_OFF={}, MANUAL_ON={};
+let activeView='week', weekStart=wkStart(TODAY), curMonth=new Date(TODAY.getFullYear(),TODAY.getMonth(),1);
+let dragTid=null, editingTid=null, deletingTid=null, deletingMemberIdx=null;
+let saveTimer=null;
+
+/* ═══════════════════════════════════════════
+   INDEXEDDB
+═══════════════════════════════════════════ */
+const DB_NAME='ecoBahiaConservacion',DB_VER=1,STORE='estado';
+let idb=null;
+
+function openIDB(){
+  return new Promise((res,rej)=>{
+    const req=indexedDB.open(DB_NAME,DB_VER);
+    req.onupgradeneeded=e=>{e.target.result.createObjectStore(STORE)};
+    req.onsuccess=e=>{idb=e.target.result;res()};
+    req.onerror=rej;
+  });
+}
+function idbGet(key){
+  return new Promise((res,rej)=>{
+    const tx=idb.transaction(STORE,'readonly');
+    const r=tx.objectStore(STORE).get(key);
+    r.onsuccess=()=>res(r.result);
+    r.onerror=rej;
+  });
+}
+function idbSet(key,val){
+  return new Promise((res,rej)=>{
+    const tx=idb.transaction(STORE,'readwrite');
+    const r=tx.objectStore(STORE).put(val,key);
+    r.onsuccess=res;r.onerror=rej;
+  });
+}
+
+function scheduleSave(){
+  setSaveDot('saving');
+  clearTimeout(saveTimer);
+  saveTimer=setTimeout(()=>persistAll().then(()=>setSaveDot('ok')).catch(()=>setSaveDot('err')),600);
+}
+function setSaveDot(s){
+  const d=document.getElementById('save-dot');
+  d.className='';
+  if(s==='saving')d.classList.add('saving');
+  else if(s==='err')d.classList.add('err');
+}
+async function persistAll(){
+  const data={TEAM,TASKS,SCHEDULE,MANUAL_OFF,MANUAL_ON,weekStartISO:weekStart.toISOString(),curMonthISO:curMonth.toISOString()};
+  await idbSet('appState',JSON.stringify(data));
+}
+async function loadAll(){
+  const raw=await idbGet('appState');
+  if(raw){
+    try{
+      const d=JSON.parse(raw);
+      TEAM=d.TEAM||defaultTeam();
+      TASKS=d.TASKS||defaultTasks();
+      SCHEDULE=d.SCHEDULE||{};
+      MANUAL_OFF=d.MANUAL_OFF||{};
+      MANUAL_ON=d.MANUAL_ON||{};
+      if(d.weekStartISO)weekStart=new Date(d.weekStartISO);
+      if(d.curMonthISO)curMonth=new Date(d.curMonthISO);
+    }catch{loadDefaults()}
+  }else{loadDefaults()}
+}
+function loadDefaults(){TEAM=defaultTeam();TASKS=defaultTasks();SCHEDULE={};MANUAL_OFF={};MANUAL_ON={}}
+
+/* ═══════════════════════════════════════════
+   SQL.JS EXPORTAR / IMPORTAR
+═══════════════════════════════════════════ */
+let SQL=null;
+async function initSQL(){
+  try{
+    SQL=await initSqlJs({locateFile:f=>`https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.2/${f}`});
+  }catch(e){console.warn('SQL.js no pudo cargarse:',e)}
+}
+
+function exportSQLite(){
+  if(!SQL){toast('SQL.js aún no está listo','warn');return}
+  const db=new SQL.Database();
+  db.run(`CREATE TABLE equipo (data TEXT);`);
+  db.run(`CREATE TABLE tareas (data TEXT);`);
+  db.run(`CREATE TABLE horario (data TEXT);`);
+  db.run(`CREATE TABLE libre_manual (data TEXT);`);
+  db.run(`CREATE TABLE trabajo_manual (data TEXT);`);
+  db.run(`INSERT INTO equipo VALUES (?)`,[ JSON.stringify(TEAM)]);
+  db.run(`INSERT INTO tareas VALUES (?)`,[ JSON.stringify(TASKS)]);
+  db.run(`INSERT INTO horario VALUES (?)`,[ JSON.stringify(SCHEDULE)]);
+  db.run(`INSERT INTO libre_manual VALUES (?)`,[ JSON.stringify(MANUAL_OFF)]);
+  db.run(`INSERT INTO trabajo_manual VALUES (?)`,[ JSON.stringify(MANUAL_ON)]);
+  const buf=db.export();
+  const blob=new Blob([buf],{type:'application/octet-stream'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=`horario_conservacion_${fmtDate(new Date())}.sqlite`;
+  a.click();
+  toast('Archivo .sqlite exportado ✓');
+}
+
+function importSQLite(file){
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try{
+      const buf=new Uint8Array(e.target.result);
+      const db=new SQL.Database(buf);
+      const readTable=(name)=>{
+        const r=db.exec(`SELECT data FROM ${name} LIMIT 1`);
+        return r.length?JSON.parse(r[0].values[0][0]):null;
+      };
+      TEAM=readTable('equipo')||defaultTeam();
+      TASKS=readTable('tareas')||defaultTasks();
+      SCHEDULE=readTable('horario')||{};
+      MANUAL_OFF=readTable('libre_manual')||{};
+      MANUAL_ON=readTable('trabajo_manual')||{};
+      renderAll();
+      scheduleSave();
+      toast('Horario importado ✓');
+    }catch(err){toast('Error al importar — archivo inválido','warn');console.error(err)}
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+/* ═══════════════════════════════════════════
+   DATOS POR DEFECTO
+═══════════════════════════════════════════ */
+function defaultTeam(){return[
+  {id:'C', name:'Coordinador',        role:'coordinador',       color:'#083231',initials:'C', schedule:'regular'},
+  {id:'S', name:'Supervisor',         role:'supervisor',        color:'#315947',initials:'S', schedule:'regular'},
+  {id:'O', name:'Auxiliar de Oficina',role:'auxiliar_oficina',  color:'#c4704a',initials:'O', schedule:'rotativo'},
+  {id:'F1',name:'Auxiliar de Campo 1',role:'auxiliar_campo',    color:'#342707',initials:'F1',schedule:'10dias'},
+  {id:'F2',name:'Auxiliar de Campo 2',role:'auxiliar_campo',    color:'#7b5ea7',initials:'F2',schedule:'regular'},
+  {id:'F3',name:'Auxiliar de Campo 3',role:'auxiliar_campo',    color:'#739d9b',initials:'F3',schedule:'regular'},
+]}
+function defaultTasks(){return[
+  {id:'t1', prog:'conservation',name:'Patrulla de Nidos de Tortuga',         freq:'diaria',       dur:'Variable',    roles:['auxiliar_campo'],                                     note:'PRIORIDAD — horario existente aplica',priority:true},
+  {id:'t2', prog:'conservation',name:'Monitoreo de Áreas con Caracol Africano',freq:'2×/semana',  dur:'30 min',      roles:['auxiliar_campo'],                                     note:'Mar y Vie, o después de lluvia'},
+  {id:'t3', prog:'conservation',name:'Revisión y Recolección de Caracoles',  freq:'2×/semana',    dur:'45 min',      roles:['auxiliar_campo'],                                     note:'Mar y Vie, o después de lluvia'},
+  {id:'t4', prog:'conservation',name:'Monitoreo de Población de Gatos',      freq:'quincenal',    dur:'2 hrs',       roles:['supervisor','auxiliar_campo'],                        note:'1ra y 3ra semana — miércoles'},
+  {id:'t5', prog:'conservation',name:'Monitoreo y Colocación de Trampas',    freq:'diaria',       dur:'3 hrs',       roles:['auxiliar_campo'],                                     note:''},
+  {id:'t6', prog:'conservation',name:'Alimentación y Revisión de Animales',  freq:'diaria',       dur:'40 min',      roles:['auxiliar_campo','auxiliar_oficina'],                  note:''},
+  {id:'t7', prog:'conservation',name:'Monitoreo de Manglares y Residuos',    freq:'diaria',       dur:'1 hr',        roles:['auxiliar_campo'],                                     note:''},
+  {id:'t8', prog:'conservation',name:'Calidad del Agua en Manglares',        freq:'semanal',      dur:'40 min',      roles:['supervisor','auxiliar_campo'],                        note:'Lunes'},
+  {id:'t9', prog:'conservation',name:'Censo de Aves Tempranero',             freq:'Lun y Vie',    dur:'40 min',      roles:['supervisor','auxiliar_campo'],                        note:'Lunes y Viernes'},
+  {id:'t10',prog:'restoration', name:'Recolección de Semillas (Endémicas)',  freq:'diaria',       dur:'1 hr',        roles:['auxiliar_campo'],                                     note:'Cuando sea temporada'},
+  {id:'t11',prog:'restoration', name:'Germinación de Semillas en Vivero',    freq:'semanal',      dur:'~2 hrs',      roles:['auxiliar_campo'],                                     note:''},
+  {id:'t12',prog:'restoration', name:'Exploración para Acodos Aéreos',       freq:'2×/mes',       dur:'5 hrs',       roles:['supervisor','auxiliar_campo'],                        note:'1er y 3er jueves'},
+  {id:'t13',prog:'restoration', name:'Realización de Acodos Aéreos',         freq:'2×/mes',       dur:'3 hrs',       roles:['auxiliar_campo'],                                     note:'Dentro de la propiedad'},
+  {id:'t14',prog:'restoration', name:'Revisión y Cuidado del Vivero',        freq:'diaria',       dur:'20–180 min',  roles:['auxiliar_campo','auxiliar_oficina'],                  note:'Variable'},
+  {id:'t15',prog:'education',   name:'Recolección de Materiales para Manualidades',freq:'según necesidad',dur:'2 hrs',roles:['auxiliar_oficina','auxiliar_campo'],                note:''},
+  {id:'t16',prog:'education',   name:'Preparación de Materiales para Actividades',freq:'según necesidad',dur:'3 hrs',roles:['auxiliar_oficina','coordinador'],                    note:''},
+  {id:'t17',prog:'education',   name:'Revisión de Equipos de Educación',     freq:'semanal',      dur:'1 hr',        roles:['auxiliar_oficina','coordinador'],                     note:'Binoculares, guías, bocinas…'},
+  {id:'t18',prog:'education',   name:'Ensayo de Presentaciones y Recorridos',freq:'según necesidad',dur:'Variable',  roles:['coordinador','supervisor','auxiliar_oficina'],        note:''},
+  {id:'t19',prog:'education',   name:'Investigación de Actividades Eco-Amigables',freq:'según necesidad',dur:'2 hrs',roles:['coordinador','supervisor'],                          note:''},
+  {id:'t20',prog:'general',     name:'Sacar y Guardar Bicicletas',           freq:'diaria',       dur:'15 min',      roles:['auxiliar_campo'],                                     note:'Cuando haya 3+ en campo'},
+  {id:'t21',prog:'general',     name:'Ordenar Área de Trabajo',              freq:'diaria',       dur:'15 min',      roles:['all'],                                               note:'Al finalizar el día'},
+  {id:'t22',prog:'general',     name:'Limpiar y Organizar Herramientas',     freq:'diaria',       dur:'20 min',      roles:['all'],                                               note:'Después de cada uso'},
+  {id:'t23',prog:'general',     name:'Revisión de Insumos y Consumibles',    freq:'semanal',      dur:'20 min',      roles:['auxiliar_oficina','coordinador'],                     note:'Papel, agua, químicos'},
+  {id:'t24',prog:'general',     name:'Reunión de Equipo',                    freq:'semanal',      dur:'45 min',      roles:['all'],                                               note:'Coordinación semanal — lunes'},
+]}
+
+/* ═══════════════════════════════════════════
+   FUNCIONES AUXILIARES
+═══════════════════════════════════════════ */
+function addDays(d,n){const r=new Date(d);r.setDate(r.getDate()+n);return r}
+function dk(d){return`${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`}
+function wkStart(d){const s=new Date(d);const dow=s.getDay();s.setDate(s.getDate()-(dow===0?6:dow-1));s.setHours(0,0,0,0);return s}
+function fmtDate(d){return d.toISOString().slice(0,10)}
+function fmtDisp(d,o){return d.toLocaleDateString('es-DO',o)}
+function getTask(id){return TASKS.find(t=>t.id===id)}
+function getProg(id){return PROG_META[id]||PROG_META.general}
+function mkId(){return'tk_'+Date.now()+'_'+Math.random().toString(36).slice(2,5)}
+function mkMemberId(){return'M'+Date.now().toString(36).slice(-4)}
+function roleLabel(r){return ROLES_DISPLAY[r]||r}
+
+function isF1Working(date){
+  const d=Math.floor((date-F1_START)/86400000);
+  if(d<0)return false;
+  const pos=((d%14)+14)%14;
+  return pos<10;
+}
+function sunRot(){return TEAM.filter(m=>m.schedule!=='10dias')}
+function sunWorker(date){
+  const rot=sunRot();if(!rot.length)return null;
+  const diff=Math.round((date-SUN_REF)/(7*86400000));
+  return rot[((diff%rot.length)+rot.length)%rot.length];
+}
+function schedWorking(member,date){
+  const dow=date.getDay();
+  if(member.schedule==='10dias')return isF1Working(date);
+  if(dow===6)return false;
+  if(dow===0){const sw=sunWorker(date);return sw&&sw.id===member.id}
+  return true;
+}
+function isManualOff(mid,date){return !!MANUAL_OFF[mid+'|'+dk(date)]}
+function isWorking(member,date){
+  if(isManualOff(member.id,date))return false;
+  if(MANUAL_ON[member.id+'|'+dk(date)])return true;
+  return schedWorking(member,date);
+}
+function toggleManualOff(mid,date){
+  const key=mid+'|'+dk(date);
+  if(MANUAL_OFF[key])delete MANUAL_OFF[key];
+  else MANUAL_OFF[key]=true;
+  renderWeek();scheduleSave();
+}
+function toggleManualOn(mid,date){
+  const key=mid+'|'+dk(date);
+  if(MANUAL_ON[key])delete MANUAL_ON[key];
+  else MANUAL_ON[key]=true;
+  renderWeek();scheduleSave();
+}
+function getCellTasks(mid,dateKey){
+  return (SCHEDULE[mid+'|'+dateKey]||[]).map(id=>getTask(id)).filter(Boolean);
+}
+
+/* ═══════════════════════════════════════════
+   HORARIO POR DEFECTO
+═══════════════════════════════════════════ */
+function defaultDayTaskIds(date){
+  return [];
+}
+function seedWeek(ws){
+  for(let i=0;i<7;i++){
+    const d=addDays(ws,i);
+    TEAM.forEach(m=>{
+      const key=m.id+'|'+dk(d);
+      if(SCHEDULE[key]!==undefined)return;
+      const manOn=!!MANUAL_ON[m.id+'|'+dk(d)];
+      if(!schedWorking(m,d)&&!manOn){SCHEDULE[key]=[];return}
+      SCHEDULE[key]=defaultDayTaskIds(d).filter(id=>{
+        const t=getTask(id);
+        return t&&(t.roles.includes('all')||t.roles.includes(m.role));
+      });
+    });
+  }
+}
+
+/* ═══════════════════════════════════════════
+   LEYENDA
+═══════════════════════════════════════════ */
+function renderLegend(){
+  document.getElementById('leg').innerHTML=
+    TEAM.map(m=>`<div class="leg-i"><div class="leg-dot" style="background:${m.color}"></div><span><b>${m.initials||m.id}</b> · ${m.name}</span></div>`).join('');
+}
+
+/* ═══════════════════════════════════════════
+   BIBLIOTECA
+═══════════════════════════════════════════ */
+let libCollapsed=new Set();
+function renderLib(q=''){
+  const lq=q.toLowerCase();
+  let h='';
+  Object.keys(PROG_META).forEach(pid=>{
+    const pm=PROG_META[pid];
+    const tasks=TASKS.filter(t=>t.prog===pid&&(!lq||t.name.toLowerCase().includes(lq)||t.freq.toLowerCase().includes(lq)));
+    if(!tasks.length)return;
+    const shut=libCollapsed.has(pid);
+    h+=`<div style="margin-bottom:.8rem">
+      <div class="lp-head ${shut?'shut':''}" style="background:${pm.color}16;color:${pm.color}" onclick="toggleLibProg('${pid}')">
+        <span>${pm.icon} ${pm.label}</span><span class="arr">▾</span>
+      </div>
+      <div class="lp-tasks" style="max-height:${shut?'0':'3000px'}">`;
+    tasks.forEach(t=>{
+      h+=`<div class="lib-card${t.priority?' prio':''}" style="border-left-color:${pm.color}"
+        draggable="true" data-tid="${t.id}"
+        ondragstart="libDragStart(event,'${t.id}')" ondragend="libDragEnd(event)"
+        onclick="openDetail('${t.id}')">
+        <div class="lc-name">${t.priority?'⭐ ':''}${t.name}</div>
+        <div class="lc-meta">${t.freq} · ${t.dur}</div>
+        <div class="lc-actions">
+          <button class="lc-btn" onclick="event.stopPropagation();openTaskModal('${t.id}')" title="Editar">✏</button>
+          <button class="lc-btn del" onclick="event.stopPropagation();confirmDelete('${t.id}')" title="Eliminar">🗑</button>
+        </div>
+      </div>`;
+    });
+    h+='</div></div>';
+  });
+  document.getElementById('lib-body').innerHTML=h||'<div style="color:var(--muted);font-size:.73rem;padding:.4rem">No se encontraron tareas</div>';
+}
+function toggleLibProg(pid){
+  if(libCollapsed.has(pid))libCollapsed.delete(pid);else libCollapsed.add(pid);
+  renderLib(document.getElementById('lib-search').value);
+}
+
+/* ═══════════════════════════════════════════
+   VISTA SEMANAL
+═══════════════════════════════════════════ */
+function renderWeek(){
+  seedWeek(weekStart);
+  const days=Array.from({length:7},(_,i)=>addDays(weekStart,i));
+  const DN=['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
+  document.getElementById('periodLbl').textContent=
+    `${fmtDisp(days[0],{month:'short',day:'numeric'})} – ${fmtDisp(days[6],{month:'short',day:'numeric',year:'numeric'})}`;
+
+  let h=`<div class="wk-grid" style="grid-template-columns:128px repeat(7,1fr)">`;
+  h+=`<div class="wk-corner"></div>`;
+  days.forEach((d,i)=>{
+    const isT=d.toDateString()===TODAY.toDateString();
+    h+=`<div class="wk-dh${isT?' tod':''}">${DN[i]}<br><small>${fmtDisp(d,{month:'short',day:'numeric'})}</small></div>`;
+  });
+
+  TEAM.forEach(m=>{
+    h+=`<div class="wk-ml" style="border-right-color:${m.color};background:${m.color}0d">
+      <div class="mn" style="color:${m.color}">${m.name}</div>
+      <div class="mr">${roleLabel(m.role)}</div>
+    </div>`;
+    days.forEach(d=>{
+      const schedOff=!schedWorking(m,d);
+      const manOff=isManualOff(m.id,d);
+      const manOn=!!MANUAL_ON[m.id+'|'+dk(d)];
+      const key=m.id+'|'+dk(d);
+      const cellTasks=getCellTasks(m.id,dk(d));
+      const empty=cellTasks.length===0;
+
+      if(schedOff&&!manOn){
+        h+=`<div class="wk-cell off-day" style="position:relative"
+          ondragover="cellDragOver(event)" ondragleave="cellDragLeave(event)"
+          ondrop="cellDrop(event,'${m.id}','${dk(d)}',${d.getTime()})">
+          <div class="off-lbl">LIBRE</div>
+          <button class="off-toggle" style="color:#aaa" onclick="toggleManualOn('${m.id}',new Date(${d.getTime()}))" title="Activar este día">＋</button>
+        </div>`;
+        return;
+      }
+
+      if(manOff){
+        h+=`<div class="wk-cell manual-off"
+          ondragover="cellDragOver(event)" ondragleave="cellDragLeave(event)"
+          ondrop="cellDrop(event,'${m.id}','${dk(d)}')">
+          <button class="off-toggle" onclick="toggleManualOff('${m.id}',new Date(${d.getTime()}))" title="Restaurar día">↺</button>
+        </div>`;
+        return;
+      }
+
+      h+=`<div class="wk-cell${manOn?' manual-on':''}"
+        ondragover="cellDragOver(event)" ondragleave="cellDragLeave(event)"
+        ondrop="cellDrop(event,'${m.id}','${dk(d)}')">
+        <button class="off-toggle" onclick="${manOn?'toggleManualOn':'toggleManualOff'}('${m.id}',new Date(${d.getTime()}))" title="${manOn?'Desactivar día':'Marcar como libre'}">⊘</button>
+        ${empty?`<div class="drop-ph">Soltar aquí</div>`:''}`;
+      cellTasks.forEach(t=>{
+        const bg=t.priority?m.color:m.color+'22';
+        const col=t.priority?'#fff':'inherit';
+        h+=`<div class="gc" style="background:${bg};border-left-color:${m.color};color:${col}" onclick="openDetail('${t.id}')">
+          <div><div class="gn">${t.priority?'⭐ ':''}${t.name.length>23?t.name.slice(0,22)+'…':t.name}</div>
+          <span class="gd">${t.dur}</span></div>
+          <button class="gx" onclick="removeCell(event,'${m.id}','${dk(d)}','${t.id}')">✕</button>
+        </div>`;
+      });
+      h+=`</div>`;
+    });
+  });
+  h+='</div>';
+  document.getElementById('vw-week').innerHTML=h;
+}
+
+function removeCell(e,mid,dkey,tid){
+  e.stopPropagation();
+  const k=mid+'|'+dkey;
+  if(SCHEDULE[k])SCHEDULE[k]=SCHEDULE[k].filter(id=>id!==tid);
+  renderWeek();scheduleSave();
+  toast('Tarea eliminada del horario');
+}
+
+/* ═══════════════════════════════════════════
+   VISTA MENSUAL
+═══════════════════════════════════════════ */
+function renderMonth(){
+  const y=curMonth.getFullYear(),mo=curMonth.getMonth();
+  const fd=new Date(y,mo,1).getDay(),offset=fd===0?6:fd-1;
+  const DN=['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
+  const seededWks=new Set();
+  let probe=new Date(y,mo,1-offset);
+  for(let i=0;i<42;i++){
+    const ws=wkStart(new Date(probe)).toISOString();
+    if(!seededWks.has(ws)){seededWks.add(ws);seedWeek(wkStart(new Date(probe)));}
+    probe.setDate(probe.getDate()+1);
+  }
+  let h='<div class="mo-grid">';
+  DN.forEach(n=>h+=`<div class="mo-hd">${n}</div>`);
+  let cd=new Date(y,mo,1-offset);
+  for(let i=0;i<42;i++){
+    const d=new Date(cd),inMo=d.getMonth()===mo,isT=d.toDateString()===TODAY.toDateString();
+    h+=`<div class="mo-cell${!inMo?' out':''}${isT?' tod':''}"><div class="mo-num">${d.getDate()}</div>`;
+    if(inMo){
+      const seen=new Set();
+      TEAM.forEach(m=>{(SCHEDULE[m.id+'|'+dk(d)]||[]).forEach(id=>seen.add(id))});
+      const arr=[...seen].map(id=>getTask(id)).filter(Boolean);
+      arr.slice(0,3).forEach(t=>{
+        const pm=getProg(t.prog);
+        h+=`<div class="mo-pill" style="background:${pm.color}18;color:${pm.color};border-left-color:${pm.color}">${t.name.slice(0,19)}…</div>`;
+      });
+      if(arr.length>3)h+=`<div class="mo-more">+${arr.length-3} más</div>`;
+    }
+    h+='</div>';cd.setDate(cd.getDate()+1);
+  }
+  h+='</div>';
+  document.getElementById('vw-month').innerHTML=h;
+  document.getElementById('periodLbl').textContent=curMonth.toLocaleDateString('es-DO',{month:'long',year:'numeric'});
+}
+
+/* ═══════════════════════════════════════════
+   ARRASTRAR Y SOLTAR
+═══════════════════════════════════════════ */
+const ghost=document.getElementById('dg');
+function libDragStart(e,tid){
+  dragTid=tid;
+  e.dataTransfer.effectAllowed='copy';
+  e.dataTransfer.setData('text/plain',tid);
+  const t=getTask(tid),pm=getProg(t.prog);
+  ghost.textContent=t.name;ghost.style.background=pm.color;ghost.style.color='#fff';ghost.style.display='block';
+  e.dataTransfer.setDragImage(ghost,0,0);
+  setTimeout(()=>e.target.classList.add('dragging'),0);
+}
+function libDragEnd(e){
+  e.target.classList.remove('dragging');ghost.style.display='none';dragTid=null;
+  document.querySelectorAll('.dov').forEach(el=>el.classList.remove('dov'));
+}
+function cellDragOver(e){e.preventDefault();e.dataTransfer.dropEffect='copy';e.currentTarget.classList.add('dov')}
+function cellDragLeave(e){e.currentTarget.classList.remove('dov')}
+function cellDrop(e,mid,dkey,ts){
+  e.preventDefault();e.currentTarget.classList.remove('dov');
+  const tid=dragTid||e.dataTransfer.getData('text/plain');
+  const task=getTask(tid);
+  if(!task){toast('Tarea no encontrada','warn');return}
+  if(ts){
+    const date=new Date(ts);
+    const mem=TEAM.find(m=>m.id===mid);
+    if(mem&&!schedWorking(mem,date)&&!MANUAL_ON[mid+'|'+dk(date)]){
+      MANUAL_ON[mid+'|'+dk(date)]=true;
+    }
+  }
+  const k=mid+'|'+dkey;
+  if(!SCHEDULE[k])SCHEDULE[k]=[];
+  if(SCHEDULE[k].includes(tid)){toast('Ya está en este espacio');return}
+  SCHEDULE[k].push(tid);
+  renderWeek();scheduleSave();
+  toast(`Agregado: ${task.name}`);
+}
+
+/* ═══════════════════════════════════════════
+   MODAL DETALLE DE TAREA
+═══════════════════════════════════════════ */
+function openDetail(tid){
+  const t=getTask(tid);if(!t)return;
+  const pm=getProg(t.prog);
+  document.getElementById('dm-prog').textContent=`${pm.icon} ${pm.label}`;
+  document.getElementById('dm-prog').style.color=pm.color;
+  document.getElementById('dm-title').textContent=t.name;
+  const matching=t.roles.includes('all')?TEAM:TEAM.filter(m=>t.roles.includes(m.role));
+  const dots=matching.map(m=>`<div class="wdot" style="background:${m.color};width:22px;height:22px;font-size:.5rem" title="${m.name}">${(m.initials||m.id).slice(0,2)}</div>`).join('');
+  document.getElementById('dm-body').innerHTML=`
+    <div class="modal-row"><span class="modal-lbl">FRECUENCIA</span><span>${t.freq}</span></div>
+    <div class="modal-row"><span class="modal-lbl">DURACIÓN</span><span>${t.dur}</span></div>
+    <div class="modal-row"><span class="modal-lbl">PRIORIDAD</span><span>${t.priority?'⭐ Sí':'No'}</span></div>
+    <div class="modal-row"><span class="modal-lbl">NOTAS</span><span>${t.note||'—'}</span></div>
+    <div class="modal-row"><span class="modal-lbl">ROLES ASIGNABLES</span><div class="wdots">${dots}</div></div>`;
+  document.getElementById('dm-edit').onclick=()=>{closeModal('detail-modal');openTaskModal(tid)};
+  document.getElementById('dm-delete').onclick=()=>{closeModal('detail-modal');confirmDelete(tid)};
+  openModal('detail-modal');
+}
+
+/* ═══════════════════════════════════════════
+   MODAL AGREGAR / EDITAR TAREA
+═══════════════════════════════════════════ */
+function openTaskModal(tid=null){
+  editingTid=tid;
+  const t=tid?getTask(tid):null;
+  document.getElementById('tm-title').textContent=t?'Editar Tarea':'Nueva Tarea';
+  document.getElementById('tm-name').value=t?t.name:'';
+  document.getElementById('tm-freq').value=t?t.freq:'';
+  document.getElementById('tm-dur').value=t?t.dur:'';
+  document.getElementById('tm-prog').value=t?t.prog:'conservation';
+  document.getElementById('tm-note').value=t?t.note:'';
+  document.getElementById('tm-prio').checked=t?!!t.priority:false;
+  const selRoles=t?t.roles:[];
+  document.getElementById('tm-roles').innerHTML=
+    `<label class="rck"><input type="checkbox" value="all" ${selRoles.includes('all')?'checked':''}> Todos los roles</label>`+
+    ROLES.map(r=>`<label class="rck"><input type="checkbox" value="${r}" ${selRoles.includes(r)?'checked':''}> ${roleLabel(r)}</label>`).join('');
+  openModal('task-modal');
+  document.getElementById('tm-name').focus();
+}
+document.getElementById('tm-save').onclick=()=>{
+  const name=document.getElementById('tm-name').value.trim();
+  if(!name){document.getElementById('tm-name').style.borderColor='var(--warn)';return}
+  document.getElementById('tm-name').style.borderColor='';
+  const roles=[...document.querySelectorAll('#tm-roles input:checked')].map(i=>i.value);
+  const data={
+    prog:document.getElementById('tm-prog').value,
+    name,freq:document.getElementById('tm-freq').value||'según necesidad',
+    dur:document.getElementById('tm-dur').value||'Variable',
+    roles:roles.length?roles:['all'],
+    note:document.getElementById('tm-note').value,
+    priority:document.getElementById('tm-prio').checked
+  };
+  if(editingTid){Object.assign(getTask(editingTid),data);toast('Tarea actualizada ✓')}
+  else{TASKS.push({id:mkId(),...data});toast('Tarea agregada a la biblioteca ✓')}
+  closeModal('task-modal');renderLib(document.getElementById('lib-search').value);
+  renderWeek();scheduleSave();
+};
+
+/* ═══════════════════════════════════════════
+   ELIMINAR TAREA
+═══════════════════════════════════════════ */
+function confirmDelete(tid){
+  deletingTid=tid;openModal('del-modal');
+}
+document.getElementById('del-confirm').onclick=()=>{
+  if(!deletingTid)return;
+  Object.keys(SCHEDULE).forEach(k=>{SCHEDULE[k]=SCHEDULE[k].filter(id=>id!==deletingTid)});
+  TASKS=TASKS.filter(t=>t.id!==deletingTid);
+  deletingTid=null;
+  closeModal('del-modal');
+  renderLib(document.getElementById('lib-search').value);
+  renderWeek();scheduleSave();
+  toast('Tarea eliminada');
+};
+document.getElementById('member-del-confirm').onclick=()=>{
+  if(deletingMemberIdx===null)return;
+  const mid=TEAM[deletingMemberIdx].id;
+  TEAM.splice(deletingMemberIdx,1);
+  [SCHEDULE,MANUAL_OFF,MANUAL_ON].forEach(obj=>{
+    Object.keys(obj).forEach(k=>{if(k.startsWith(mid+'|'))delete obj[k]});
+  });
+  deletingMemberIdx=null;
+  closeModal('member-del-modal');
+  renderTeamPanel();renderAll();scheduleSave();
+  toast('Miembro eliminado ✓');
+};
+
+/* ═══════════════════════════════════════════
+   PATRULLA RÁPIDA
+═══════════════════════════════════════════ */
+function openPatrolModal(){
+  const days=Array.from({length:7},(_,i)=>addDays(weekStart,i));
+  const DN=['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
+  document.getElementById('patrol-days').innerHTML=days.map((d,i)=>
+    `<button class="pd-btn" data-dk="${dk(d)}" onclick="this.classList.toggle('sel')">
+      <div>${DN[i]}</div><div style="font-size:.5rem">${fmtDisp(d,{month:'short',day:'numeric'})}</div>
+    </button>`
+  ).join('');
+  document.getElementById('patrol-who').innerHTML=TEAM.map(m=>
+    `<label class="pw-check">
+      <input type="checkbox" value="${m.id}" ${schedWorking(m,days[0])?'checked':''}>
+      <div class="leg-dot" style="background:${m.color}"></div>${m.name}
+    </label>`
+  ).join('');
+  openModal('patrol-modal');
+}
+document.getElementById('patrol-save').onclick=()=>{
+  const patrolTask=TASKS.find(t=>t.priority&&t.prog==='conservation');
+  if(!patrolTask){toast('Tarea de patrulla no encontrada','warn');return}
+  const selDays=[...document.querySelectorAll('#patrol-days .pd-btn.sel')].map(b=>b.dataset.dk);
+  const selMembers=[...document.querySelectorAll('#patrol-who input:checked')].map(i=>i.value);
+  if(!selDays.length||!selMembers.length){toast('Selecciona al menos un día y un miembro','warn');return}
+  let added=0;
+  selMembers.forEach(mid=>{
+    selDays.forEach(dkey=>{
+      const k=mid+'|'+dkey;
+      if(!SCHEDULE[k])SCHEDULE[k]=[];
+      if(!SCHEDULE[k].includes(patrolTask.id)){SCHEDULE[k].unshift(patrolTask.id);added++}
+    });
+  });
+  closeModal('patrol-modal');renderWeek();scheduleSave();
+  toast(`Patrulla asignada a ${added} espacio(s) ✓`);
+};
+
+/* ═══════════════════════════════════════════
+   PANEL DE EQUIPO
+═══════════════════════════════════════════ */
+function openTeamPanel(){
+  renderTeamPanel();
+  document.getElementById('team-panel').classList.add('open');
+}
+function renderTeamPanel(){
+  let h='';
+  TEAM.forEach((m,idx)=>{
+    h+=`<div class="mb-card">
+      <div class="mb-card-hd">
+        <div class="mb-av" style="background:${m.color}" onclick="toggleColorPicker(${idx})" title="Cambiar color">${(m.initials||m.id).slice(0,2)}</div>
+        <div class="mb-name-disp">${m.name}</div>
+        <button class="mb-del" onclick="deleteMember(${idx})" title="Eliminar">✕</button>
+      </div>
+      <div id="cp-${idx}" style="display:none;margin-bottom:.6rem">
+        <div class="color-grid">${PALETTE.map(c=>`<div class="csw${c===m.color?' sel':''}" style="background:${c}" onclick="setMemberColor(${idx},'${c}')"></div>`).join('')}</div>
+      </div>
+      <label class="f-lbl">Nombre</label>
+      <input class="f-inp" value="${m.name}" onchange="TEAM[${idx}].name=this.value">
+      <div class="f-row">
+        <div><label class="f-lbl">ID corto</label><input class="f-inp" value="${m.id}" maxlength="4" onchange="TEAM[${idx}].id=this.value"></div>
+        <div><label class="f-lbl">Iniciales</label><input class="f-inp" value="${m.initials||m.id}" maxlength="3" onchange="TEAM[${idx}].initials=this.value"></div>
+      </div>
+      <label class="f-lbl">Rol</label>
+      <select class="f-sel" onchange="TEAM[${idx}].role=this.value">
+        ${ROLES.map(r=>`<option value="${r}"${m.role===r?' selected':''}>${roleLabel(r)}</option>`).join('')}
+      </select>
+      <label class="f-lbl">Tipo de Horario</label>
+      <select class="f-sel" onchange="TEAM[${idx}].schedule=this.value">
+        <option value="regular"${m.schedule==='regular'?' selected':''}>Regular (44h/semana)</option>
+        <option value="rotativo"${m.schedule==='rotativo'?' selected':''}>Rotativo (cubre domingos)</option>
+        <option value="10dias"${m.schedule==='10dias'?' selected':''}>Ciclo 10 días (10 trabajo / 4 libre)</option>
+      </select>
+    </div>`;
+  });
+  h+=`<button class="add-mem-btn" onclick="addMember()">+ Agregar Miembro</button>`;
+  h+=`<button class="apply-btn" onclick="applyTeam()">Aplicar y Actualizar</button>`;
+  document.getElementById('team-body').innerHTML=h;
+}
+function toggleColorPicker(idx){
+  const el=document.getElementById('cp-'+idx);
+  el.style.display=el.style.display==='none'?'block':'none';
+}
+function setMemberColor(idx,color){
+  TEAM[idx].color=color;
+  renderTeamPanel();
+}
+function deleteMember(idx){
+  if(TEAM.length<=1){toast('Se necesita al menos un miembro','warn');return}
+  deletingMemberIdx=idx;
+  const m=TEAM[idx];
+  const mid=m.id;
+  const scheduledDays=Object.keys(SCHEDULE).filter(k=>k.startsWith(mid+'|')&&(SCHEDULE[k]||[]).length>0).length;
+  const totalTasks=Object.keys(SCHEDULE).filter(k=>k.startsWith(mid+'|')).reduce((s,k)=>s+(SCHEDULE[k]||[]).length,0);
+  document.getElementById('mdel-name').textContent=m.name;
+  document.getElementById('mdel-info').textContent=totalTasks>0
+    ?`Esto eliminará ${totalTasks} tarea(s) programada(s) en ${scheduledDays} día(s) del horario.`
+    :'Este miembro no tiene tareas programadas.';
+  openModal('member-del-modal');
+}
+function addMember(){
+  TEAM.push({id:mkMemberId(),name:'Nuevo Miembro',role:'auxiliar_campo',color:PALETTE[TEAM.length%PALETTE.length],initials:'NM',schedule:'regular'});
+  renderTeamPanel();
+}
+function applyTeam(){
+  renderAll();scheduleSave();toast('Equipo actualizado ✓');
+}
+
+/* ═══════════════════════════════════════════
+   REPORTE
+═══════════════════════════════════════════ */
+function openReportPanel(){
+  const days=Array.from({length:7},(_,i)=>addDays(weekStart,i));
+  const DN=['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
+  seedWeek(weekStart);
+
+  let tableRows='';
+  let textLines=[];
+  const weekRange=`${fmtDisp(days[0],{month:'short',day:'numeric'})} – ${fmtDisp(days[6],{month:'short',day:'numeric',year:'numeric'})}`;
+  textLines.push(`ECO-BAHIA · EQUIPO DE CONSERVACIÓN`);
+  textLines.push(`Horario Semanal: ${weekRange}`);
+  textLines.push(`Generado: ${fmtDisp(new Date(),{month:'long',day:'numeric',year:'numeric'})}`);
+  textLines.push('─'.repeat(52));
+
+  days.forEach((d,i)=>{
+    const allOnDay=[];
+    TEAM.forEach(m=>{
+      if(!isWorking(m,d))return;
+      const tasks=getCellTasks(m.id,dk(d));
+      tasks.forEach(t=>{allOnDay.push({member:m,task:t})});
+    });
+
+    const dateStr=`${DN[i]} ${fmtDisp(d,{month:'short',day:'numeric'})}`;
+    if(allOnDay.length===0){
+      tableRows+=`<tr><td><b>${dateStr}</b></td><td colspan="3" style="color:var(--muted);font-style:italic">Sin tareas programadas</td></tr>`;
+      textLines.push(`\n${dateStr}: Sin tareas programadas`);
+      return;
+    }
+
+    textLines.push(`\n${dateStr}:`);
+    let first=true;
+    const byMember={};
+    allOnDay.forEach(({member,task})=>{
+      if(!byMember[member.id])byMember[member.id]={member,tasks:[]};
+      byMember[member.id].tasks.push(task);
+    });
+
+    Object.values(byMember).forEach(({member,tasks})=>{
+      tasks.forEach((t)=>{
+        const pm=getProg(t.prog);
+        tableRows+=`<tr>
+          ${first?`<td rowspan="${allOnDay.length}" style="font-weight:600;vertical-align:top;padding-top:.5rem">${dateStr}</td>`:''}
+          <td><div style="display:flex;align-items:center;gap:.3rem"><div class="leg-dot" style="background:${member.color}"></div>${member.name}</div></td>
+          <td>${t.priority?'⭐ ':''}${t.name}</td>
+          <td><span style="background:${pm.color}16;color:${pm.color};padding:1px 5px;border-radius:3px;font-size:.62rem">${pm.icon} ${pm.label}</span></td>
+        </tr>`;
+        first=false;
+        textLines.push(`  · ${member.name}: ${t.name} (${t.dur})`);
+      });
+    });
+  });
+
+  const totalAssigned=days.reduce((s,d)=>{
+    let c=0;TEAM.forEach(m=>{c+=getCellTasks(m.id,dk(d)).length});return s+c;
+  },0);
+  const workingDays=days.reduce((s,d)=>{let c=0;TEAM.forEach(m=>{if(isWorking(m,d))c++});return s+c;},0);
+
+  textLines.push('\n'+'─'.repeat(52));
+  textLines.push(`Total de tareas asignadas: ${totalAssigned} | Días-miembro laborales: ${workingDays}`);
+
+  const wkEl=document.querySelector('#vw-week .wk-grid');
+  let miniHtml='';
+  if(wkEl){
+    const cl=wkEl.cloneNode(true);
+    cl.querySelectorAll('.gx,.off-toggle,.drop-ph').forEach(e=>e.remove());
+    ['ondragover','ondragleave','ondrop','ondragstart','onclick'].forEach(a=>
+      cl.querySelectorAll('['+a+']').forEach(e=>e.removeAttribute(a)));
+    miniHtml=cl.outerHTML;
+  }
+
+  document.getElementById('report-body').innerHTML=`
+    <div class="rpt-section">
+      <div class="rpt-hd">📅 ${weekRange}</div>
+      <div class="rpt-summary-pills">
+        <span class="rpt-pill" style="background:#d3fda0;color:#083231">Tareas totales: ${totalAssigned}</span>
+        <span class="rpt-pill" style="background:#baede6;color:#083231">Días-miembro laborales: ${workingDays}</span>
+        <span class="rpt-pill" style="background:#ffda70;color:#342707">Tamaño del equipo: ${TEAM.length}</span>
+      </div>
+    </div>
+    <div class="rpt-section">
+      <div class="rpt-hd" style="font-size:.8rem">Horario de Tareas</div>
+      <table class="rpt-table">
+        <thead><tr><th>Día</th><th>Miembro</th><th>Tarea</th><th>Programa</th></tr></thead>
+        <tbody>${tableRows}</tbody>
+      </table>
+    </div>
+    <div class="rpt-section">
+      <div class="rpt-hd" style="font-size:.8rem">Vista de Semana</div>
+      <div class="mini-grid-wrap">${miniHtml}</div>
+      <div style="display:none" id="copy-text">${textLines.join('\n')}</div>
+      <div style="display:flex;gap:.5rem;margin-top:.6rem">
+        <button class="copy-btn" onclick="copyReport()">📋 Copiar al portapapeles</button>
+        <button class="print-btn" onclick="window.print()">🖨 Imprimir</button>
+      </div>
+    </div>`;
+  document.getElementById('report-panel').classList.add('open');
+}
+function copyReport(){
+  const txt=document.getElementById('copy-text').textContent;
+  navigator.clipboard.writeText(txt).then(()=>toast('Copiado al portapapeles ✓')).catch(()=>toast('Error al copiar','warn'));
+}
+
+/* ═══════════════════════════════════════════
+   MODALES — AYUDAS
+═══════════════════════════════════════════ */
+function openModal(id){document.getElementById(id).classList.add('open')}
+function closeModal(id){document.getElementById(id).classList.remove('open')}
+document.querySelectorAll('.modal-close,[data-modal]').forEach(el=>{
+  el.addEventListener('click',()=>closeModal(el.dataset.modal||el.closest('.modal-bg').id));
+});
+document.querySelectorAll('.modal-bg').forEach(bg=>{
+  bg.addEventListener('click',e=>{if(e.target===bg)closeModal(bg.id)});
+});
+
+/* ═══════════════════════════════════════════
+   NAVEGACIÓN
+═══════════════════════════════════════════ */
+document.getElementById('prevBtn').onclick=()=>{
+  if(activeView==='week'){weekStart=addDays(weekStart,-7);renderWeek()}
+  else{curMonth=new Date(curMonth.getFullYear(),curMonth.getMonth()-1,1);renderMonth()}
+};
+document.getElementById('nextBtn').onclick=()=>{
+  if(activeView==='week'){weekStart=addDays(weekStart,7);renderWeek()}
+  else{curMonth=new Date(curMonth.getFullYear(),curMonth.getMonth()+1,1);renderMonth()}
+};
+document.querySelectorAll('.vpill').forEach(btn=>{
+  btn.onclick=()=>{
+    document.querySelectorAll('.vpill').forEach(b=>b.classList.remove('on'));
+    btn.classList.add('on');activeView=btn.dataset.v;
+    document.getElementById('vw-week').style.display=activeView==='week'?'':'none';
+    document.getElementById('vw-month').style.display=activeView==='month'?'':'none';
+    if(activeView==='week')renderWeek();else renderMonth();
+  };
+});
+
+/* ═══════════════════════════════════════════
+   BOTONES DE BARRA
+═══════════════════════════════════════════ */
+document.getElementById('libToggle').onclick=()=>{
+  const lib=document.getElementById('lib');
+  const hiding=lib.classList.toggle('hide');
+  document.getElementById('libToggle').classList.toggle('active-btn',!hiding);
+};
+document.getElementById('patrolBtn').onclick=openPatrolModal;
+document.getElementById('teamBtn').onclick=openTeamPanel;
+document.getElementById('reportBtn').onclick=openReportPanel;
+document.getElementById('newTaskBtn').onclick=()=>openTaskModal();
+document.getElementById('exportBtn').onclick=exportSQLite;
+document.getElementById('importFile').onchange=e=>{if(e.target.files[0])importSQLite(e.target.files[0])};
+
+/* ═══════════════════════════════════════════
+   NOTIFICACIÓN
+═══════════════════════════════════════════ */
+let toastTimer;
+function toast(msg,type=''){
+  const el=document.getElementById('toast');
+  el.textContent=msg;el.className='show';
+  if(type==='warn')el.classList.add('warn');
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>el.className='',2600);
+}
+
+/* ═══════════════════════════════════════════
+   RENDERIZAR TODO
+═══════════════════════════════════════════ */
+function renderAll(){
+  renderLegend();renderLib(document.getElementById('lib-search').value);
+  if(activeView==='week')renderWeek();else renderMonth();
+}
+
+/* ═══════════════════════════════════════════
+   INICIALIZACIÓN
+═══════════════════════════════════════════ */
+async function init(){
+  await openIDB();
+  await loadAll();
+  await initSQL();
+  renderAll();
+  setSaveDot('ok');
+}
+init();
+</script>
+</body>
+</html>

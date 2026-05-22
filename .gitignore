@@ -9,6 +9,9 @@ $RECYCLE.BIN/
 *.suo
 *.user
 
+# Claude Code local settings and memory
+.claude/
+
 # Environment
 .env
 .env.local

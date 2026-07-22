@@ -1,0 +1,116 @@
+{
+  "_comment": "Structural map of mealbudgeter.html for fast lookup before edits. Line numbers are a snapshot (regenerate after large edits). The Android port mealbudgeter-android/www/index.html is a byte-identical copy — always re-sync after editing the main file.",
+  "meta": {
+    "mainFile": "mealbudgeter/mealbudgeter.html",
+    "androidPort": "mealbudgeter-android/www/index.html (must stay byte-identical; copy after every change)",
+    "type": "single self-contained HTML file (inline CSS + vanilla JS, no build step, no external deps except two runtime APIs below)",
+    "lineCountAtSnapshot": 2278,
+    "storageKey": "mealBudgeter_state_v1 (localStorage, single JSON blob)",
+    "runtimeAPIs": {
+      "TheMealDB": "https://www.themealdb.com/api/json/v1/1/search.php?s= (recipe import, CORS-open, no key)",
+      "MyMemory": "https://api.mymemory.translated.net/get (ingredient-name translation, CORS-open, no key)",
+      "navigator.share": "shopping-list share sheet (mobile/Android), clipboard fallback"
+    }
+  },
+  "topLevelStructure": {
+    "style": [7, 358],
+    "bodyStart": 360,
+    "logoOrHeader": "header nav + tabs at ~361-373",
+    "mainSections": [377, 481],
+    "modalsContainer": "div#modalOverlay 483-682",
+    "scriptStart": 684,
+    "scriptEnd": 2277
+  },
+  "tabs": {
+    "note": "4 tabs; nav buttons ~366-371 with data-tab; panels below. Tab switching handler near line 1080 (querySelectorAll('.tab-btn')).",
+    "panels": {
+      "tab-pantry": {"line": 377, "heading": "pantry_heading", "keyIds": ["translateAllBtn", "addIngredientBtn", "pantryEmpty", "pantryTableWrap", "pantryTbody"]},
+      "tab-recipes": {"line": 404, "keyIds": ["importRecipeBtn", "addRecipeBtn", "recipesEmpty", "recipeGrid"]},
+      "tab-planner": {"line": 418, "keyIds": ["randomizeBtn", "reportBtn", "addMealTypeBtn", "budgetDashboard", "statWeeklyCost", "statDailyCost", "statBudgetCard", "statBudgetRemaining", "budgetGoalInput", "plannerEmpty", "plannerGridWrap", "plannerTable"]},
+      "tab-shopping": {"line": 455, "keyIds": ["shareShoppingBtn", "clearCheckedBtn", "pantryPicker", "togglePantryPickerBtn", "pantryPickerPanel", "pantryPickerList", "shoppingSummary", "shoppingTotalValue", "shoppingProgress", "shoppingEmpty", "shoppingListEl"]}
+    }
+  },
+  "modals": {
+    "ingredientModal": {"line": 485, "form": "ingredientForm", "fields": ["ingredientId(hidden)", "ingredientName", "ingredientUnit(+unitOptions datalist)", "ingredientPrice", "ingredientPriceLabel"], "packCalc": ["togglePackCalcBtn", "packCalcFields", "packPriceInput", "packQtyInput", "packCalcResult", "applyPackCalcBtn(dynamic)"], "buttons": ["cancelIngredientBtn", "submit"]},
+    "recipeModal": {"line": 540, "form": "recipeForm", "fields": ["recipeId(hidden)", "recipeName", "recipeIngList", "recipeIngSelect", "recipeIngQty", "recipeIngAddBtn", "recipeTotalCost"], "buttons": ["cancelRecipeBtn", "submit"]},
+    "slotModal": {"line": 572, "fields": ["slotModalTitle", "slotRecipeSelect", "slotQtyInput"], "buttons": ["slotClearBtn", "cancelSlotBtn", "slotSaveBtn"]},
+    "mealTypeModal": {"line": 589, "fields": ["mealTypeName", "mealTypePosition"], "buttons": ["cancelMealTypeBtn", "saveMealTypeBtn"]},
+    "reportModal": {"line": 605, "fields": ["reportText(pre)"], "buttons": ["closeReportBtn", "copyReportBtn", "printReportBtn"]},
+    "settingsModal": {"line": 615, "fields": ["languageSelect", "currencySymbolInput", "showCentsInput", "exportDataBtn", "importDataLbl/importDataFile"], "buttons": ["closeSettingsBtn"]},
+    "importSearchModal": {"line": 646, "fields": ["importSearchInput", "importSearchBtn", "importSearchStatus", "importResultsList"], "buttons": ["cancelImportSearchBtn"]},
+    "importReviewModal": {"line": 662, "fields": ["importRecipeName", "importIngredientsTbody", "importHint"], "buttons": ["backToSearchBtn", "cancelImportReviewBtn", "confirmImportBtn"]}
+  },
+  "jsSections": {
+    "constants+I18N": [686, 922],
+    "i18nHelpers (t, dayLabel, mealTypeLabel, findMealType, sortedMealTypes, slotRecipeId, slotQty, applyStaticTranslations, ingredientDisplayName, translateText, UNIT_SUGGESTIONS)": [923, 980],
+    "state (uid, emptyMealPlan, loadState, normalizeMealPlan, saveState, formatCurrency, formatQty)": [989, 1075],
+    "modalHelpers (openModal, closeModals)": [1085, 1102],
+    "PANTRY": [1104, 1295],
+    "RECIPES": [1297, 1461],
+    "PLANNER+DASHBOARD": [1463, 1689],
+    "SHOPPING_LIST": [1691, 1912],
+    "WEEKLY_REPORT": [1914, 1992],
+    "SETTINGS + export/import": [1994, 2063],
+    "RECIPE_IMPORT_TheMealDB": [2064, 2253],
+    "shared (escapeHtml, renderAll)": [2255, 2270]
+  },
+  "functions": {
+    "t": {"line": 923, "sig": "t(key, vars) -> localized string; {placeholders} replaced from vars"},
+    "dayLabel": {"line": 932}, "mealTypeLabel": {"line": 933, "note": "built-in meal uses labelKey (i18n); custom uses .name"},
+    "findMealType": {"line": 934}, "sortedMealTypes": {"line": 935, "note": "sorted by .order"},
+    "slotRecipeId": {"line": 939, "note": "reads recipeId from slot {recipeId,qty} | legacy string | null"},
+    "slotQty": {"line": 940, "note": "reads qty (default 1)"},
+    "applyStaticTranslations": {"line": 947, "note": "sets textContent/placeholder for [data-i18n]/[data-i18n-placeholder]; rebuilds unitOptions datalist"},
+    "ingredientDisplayName": {"line": 964, "note": "shows cached translation for current lang else .name"},
+    "translateText": {"line": 971, "sig": "async translateText(text, targetLang, sourceLang) via MyMemory"},
+    "uid": {"line": 989}, "emptyMealPlan": {"line": 993}, "loadState": {"line": 1002, "note": "defaults + migrations (legacy string slots -> {recipeId,qty}; backfills mealTypes/mealPlan keys; shopping* maps)"},
+    "normalizeMealPlan": {"line": 1045}, "saveState": {"line": 1054}, "formatCurrency": {"line": 1062, "note": "opts.totals -> whole/2dp per showCents; else always 2dp"},
+    "formatQty": {"line": 1071, "note": "rounds qty to 3dp, strips trailing zeros (fixes float noise)"},
+    "renderPantry": {"line": 1117}, "openIngredientModal": {"line": 1207}, "updatePackCalc": {"line": 1239}, "deleteIngredient": {"line": 1277, "note": "cleans recipes + shopping* maps"},
+    "recipeCost": {"line": 1311}, "draftCost": {"line": 1318}, "renderRecipes": {"line": 1325}, "populateRecipeIngSelect": {"line": 1357}, "renderDraftIngList": {"line": 1380}, "openRecipeModal": {"line": 1416}, "deleteRecipe": {"line": 1449, "note": "clears recipe from all slots via slotRecipeId"},
+    "dayCost": {"line": 1477, "note": "sum recipeCost*slotQty over meal types"}, "weeklyCost": {"line": 1487}, "renderPlanner": {"line": 1491, "note": "grid; shows recipe name + ×qty + cost; meal-remove-btn for custom types; slot-btn -> openSlotModal"},
+    "openSlotModal": {"line": 1540, "note": "prefills slotRecipeSelect + slotQtyInput"}, "removeMealType": {"line": 1561},
+    "randomizeHandler": {"line": "~1637 (anonymous, on #randomizeBtn)", "note": "fills every day×mealType slot with random recipe qty1; confirm if plan non-empty"},
+    "renderDashboard": {"line": 1656}, "plannedTotals": {"line": 1701, "note": "aggregates ingredient qty across planner * slotQty"},
+    "computeShoppingList": {"line": 1719, "note": "merges plannedTotals (minus shoppingExcluded) + shoppingExtra; item={ingredientId,ingredient,plannedQty,extraQty,quantity,manual}"},
+    "renderPantryPicker": {"line": 1738, "note": "master include/exclude checklist of all pantry items"},
+    "renderShoppingList": {"line": 1781, "note": "rows w/ check(bought)+qty(editable if manual)+cost+remove(✕); ✕ on planner item -> shoppingExcluded, on manual -> delete extra"},
+    "buildShoppingListText": {"line": 1875, "note": "plaintext for share (uses formatQty)"},
+    "buildReportText": {"line": 1922, "note": "plaintext report: budget summary + weekly plan (×qty) + shopping list (formatQty)"},
+    "parseMeasure": {"line": 2083, "note": "TheMealDB free-text measure -> {quantity,unit}"}, "extractMealIngredients": {"line": 2112},
+    "openImportReview": {"line": 2167}, "renderImportReviewRows": {"line": 2177},
+    "escapeHtml": {"line": 2258}, "renderAll": {"line": 2264, "note": "applyStaticTranslations + renderPantry/Recipes/Planner/Dashboard/ShoppingList"}
+  },
+  "keyEventHandlers": {
+    "note": "most are anonymous listeners near their section; search 'getElementById(\"<id>\").addEventListener'",
+    "randomizeBtn": "SHOPPING? no — PLANNER ~1637", "reportBtn/printReportBtn/copyReportBtn/closeReportBtn": "WEEKLY_REPORT ~1914-1992",
+    "exportDataBtn/importDataFile": "SETTINGS ~2010-2063", "shareShoppingBtn": "SHOPPING ~1888",
+    "togglePantryPickerBtn/clearCheckedBtn": "SHOPPING ~1818-1826", "settingsBtn/closeSettingsBtn": "SETTINGS ~1996-2009",
+    "importRecipeBtn/importSearchBtn/confirmImportBtn": "RECIPE_IMPORT ~2100-2253"
+  },
+  "stateSchema": {
+    "ingredients": "[{ id, name, unit, pricePerUnit:Number, lastUpdated:ms, translations:{ [lang]:String } }]",
+    "recipes": "[{ id, name, ingredients:[{ ingredientId, quantity:Number }] }]",
+    "mealTypes": "[{ id, order:Number, labelKey?:String(builtin i18n key) , name?:String(custom) }] (builtins: breakfast/lunch/dinner)",
+    "mealPlan": "{ [day in monday..sunday]: { [mealTypeId]: null | { recipeId, qty:Int>=1 } } }  (legacy: bare recipeId string, auto-migrated)",
+    "budgetGoal": "Number (weekly, in currency)",
+    "shoppingChecked": "{ [ingredientId]: true }  // 'bought it' ticks",
+    "shoppingExtra": "{ [ingredientId]: qtyNumber }  // manual pantry additions",
+    "shoppingExcluded": "{ [ingredientId]: true }  // planner items the user removed from the list",
+    "settings": "{ currencySymbol:String(default 'RD$'), showCents:Bool(default false), language:'en'|'es' }"
+  },
+  "conventions": {
+    "singleFile": "Keep everything in one HTML file (matches sibling apps; Android port is a plain copy; user zips single file). Do NOT split into external .js unless explicitly requested.",
+    "i18n": "All user-facing strings live in I18N.en/I18N.es (lines ~702-921), mirrored. Static markup uses data-i18n / data-i18n-placeholder; dynamic JS strings use t(key, vars). ALWAYS add new keys to BOTH en and es. Never translate user data (ingredient/recipe/custom-meal names) except via the explicit ingredient-translation feature.",
+    "currency": "formatCurrency(n,{totals:true}) for aggregate totals (respects showCents); plain formatCurrency(n) for per-unit prices (always 2dp).",
+    "quantities": "Use formatQty(n) for any summed/aggregated quantity display to avoid binary-float noise.",
+    "afterEdit": "1) test in browser preview (server name 'mealbudgeter', port 3134, path /mealbudgeter.html) with no console errors; 2) copy mealbudgeter.html -> mealbudgeter-android/www/index.html; 3) regenerate this map if structure changed materially."
+  },
+  "i18nKeyPrefixes": {
+    "tab_": "tab labels", "th_": "table headers", "btn_": "buttons", "field_": "form field labels", "placeholder_": "input placeholders",
+    "stat_": "dashboard stat labels", "day_": "weekday short labels", "meal_": "builtin meal-type labels", "report_": "weekly report sections",
+    "share_": "share feature", "confirm_": "confirm() dialog text", "import_": "TheMealDB import", "shopping_/pantry_": "shopping+picker",
+    "randomize_": "randomize feature", "position_": "meal-type insert positions", "settings_": "settings modal"
+  },
+  "i18nKeysSnapshot": "add_from_pantry_btn,add_ingredient_btn,add_meal_type_btn,add_meal_type_title,add_slot,all_matched,btn_add,btn_apply,btn_assign,btn_back,btn_cancel,btn_clear_checked,btn_clear_slot,btn_close,btn_copy,btn_delete,btn_done,btn_edit,btn_export,btn_fetch_live_price,btn_import,btn_import_recipe,btn_print,btn_remove,btn_save_ingredient,btn_save_recipe,btn_search,btn_share,btn_translate_tooltip,confirm_delete_ingredient,confirm_delete_ingredient_used,confirm_delete_recipe,confirm_delete_recipe_used,confirm_import_overwrite,confirm_randomize,confirm_remove_meal_type,copied_feedback,copy_error,create_new_prefix,day_monday..day_sunday,day_total,fetch_error,field_currency_symbol,field_data,field_ingredients,field_language,field_meal_qty,field_meal_type_name,field_name,field_pack_price,field_pack_qty,field_position,field_price_per_unit,field_recipe,field_recipe_name,field_search_by_name,field_show_cents,field_unit,from_plan_tag,import_invalid_file,import_recipe_btn,import_review_title,import_search_title,import_success,ingredient_add_title,ingredient_edit_title,ingredients_needed_first,label_total_cost,left_suffix,meal_breakfast,meal_lunch,meal_dinner,mismatch_warning,needs_price_suffix,new_ingredients_hint_singular,new_ingredients_hint_plural,new_recipe_btn,no_ingredients,no_results,over_suffix,pack_calc_result,pantry_empty,pantry_heading,pantry_picker_hint,placeholder_ingredient_name,placeholder_ingredient_unit,placeholder_meal_type_name,placeholder_qty,placeholder_recipe_name,placeholder_search_recipe,planner_empty,planner_heading,position_after,position_before,randomize_btn,randomize_no_recipes,recipe_new_title,recipe_edit_title,recipes_empty,recipes_heading,remove_item,remove_meal_type,removed_ingredient,report_btn,report_budget_summary,report_generated,report_header,report_shopping_list,report_title,report_weekly_plan,result_singular,result_plural,searching,select_a_recipe,set_a_goal,settings_btn,settings_title,share_copied,share_list_title,shopping_empty,shopping_empty_no_pantry,shopping_heading,shopping_progress,shopping_total_label,slot_assign_title,stat_budget_goal_label,stat_budget_remaining_label,stat_daily_cost_label,stat_weekly_cost_label,tab_pantry,tab_recipes,tab_planner,tab_shopping,th_actions,th_ingredient,th_last_updated,th_meal,th_name,th_pantry_match,th_price_unit,th_qty,th_unit,toggle_pack_calc,tooltip_coming_soon,translate_all_btn,translate_error,translating"
+}

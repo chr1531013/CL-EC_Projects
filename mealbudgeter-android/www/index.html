@@ -1,0 +1,2232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Meal Budgeter</title>
+<style>
+  :root {
+    /* Caribbean turquoise + Mediterranean terracotta/olive/sand */
+    --primary: #0f8b8d;
+    --primary-dark: #0b6b6d;
+    --primary-light: #d9f2f0;
+    --accent: #e0703a;
+    --accent-dark: #c1571f;
+    --accent-light: #fbe6da;
+    --danger: #c1440e;
+    --danger-light: #fbe3d5;
+    --success: #7c9a3c;
+    --success-light: #eef3dd;
+    --bg: #fbf3e7;
+    --card-bg: #fffdf8;
+    --border: #ecdcc4;
+    --text: #2b2420;
+    --text-muted: #8c7a63;
+    --radius: 10px;
+    --shadow: 0 1px 3px rgba(43,36,32,0.08), 0 1px 2px rgba(43,36,32,0.06);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+  }
+  body::before {
+    content: "";
+    display: block;
+    height: 4px;
+    background: linear-gradient(90deg, var(--primary), var(--accent));
+  }
+  header {
+    background: var(--card-bg);
+    border-bottom: 1px solid var(--border);
+    padding: 1rem 1.25rem 0;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  header h1 {
+    margin: 0 0 0.75rem;
+    font-size: 1.4rem;
+  }
+  .tabs {
+    display: flex;
+    gap: 0.25rem;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tab-btn {
+    background: none;
+    border: none;
+    border-bottom: 3px solid transparent;
+    padding: 0.6rem 1rem;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    cursor: pointer;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .tab-btn.active {
+    color: var(--primary);
+    border-bottom-color: var(--primary);
+  }
+  main {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 1.25rem;
+  }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+  .panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+  }
+  .panel-header h2 { margin: 0; font-size: 1.15rem; }
+  .btn {
+    border: 1px solid var(--border);
+    background: var(--card-bg);
+    color: var(--text);
+    padding: 0.5rem 0.9rem;
+    border-radius: var(--radius);
+    font-size: 0.9rem;
+    cursor: pointer;
+    font-weight: 600;
+  }
+  .btn:hover { background: var(--bg); }
+  .btn-primary {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: #fff;
+  }
+  .btn-primary:hover { background: var(--primary-dark); }
+  .btn-danger { color: var(--danger); }
+  .btn-danger:hover { background: var(--danger-light); }
+  .btn-sm { padding: 0.3rem 0.6rem; font-size: 0.8rem; }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn:disabled:hover { background: var(--card-bg); }
+
+  .empty-state {
+    text-align: center;
+    padding: 2.5rem 1rem;
+    color: var(--text-muted);
+    background: var(--card-bg);
+    border: 1px dashed var(--border);
+    border-radius: var(--radius);
+  }
+
+  .table-wrap {
+    overflow-x: auto;
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+  }
+  table { width: 100%; border-collapse: collapse; min-width: 560px; }
+  th, td {
+    text-align: left;
+    padding: 0.65rem 0.85rem;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.9rem;
+    white-space: nowrap;
+  }
+  th { color: var(--text-muted); font-weight: 600; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.03em; }
+  tbody tr:last-child td { border-bottom: none; }
+  .row-actions { display: flex; gap: 0.4rem; }
+
+  .card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 1rem;
+  }
+  .recipe-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  .recipe-card h3 { margin: 0; font-size: 1.05rem; }
+  .recipe-card ul { margin: 0; padding-left: 1.1rem; font-size: 0.85rem; color: var(--text-muted); flex: 1; }
+  .recipe-cost { font-size: 1.1rem; font-weight: 700; color: var(--accent-dark); }
+  .recipe-card .row-actions { justify-content: flex-end; margin-top: 0.25rem; }
+
+  .budget-dashboard {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 0.75rem;
+    margin-bottom: 1.25rem;
+  }
+  .stat-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 0.9rem 1rem;
+  }
+  .stat-card .label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.03em; color: var(--text-muted); }
+  .stat-card .value { font-size: 1.35rem; font-weight: 700; margin-top: 0.25rem; }
+  .stat-card.under .value { color: var(--success); }
+  .stat-card.over .value { color: var(--danger); }
+  .stat-card input[type="number"] {
+    margin-top: 0.35rem;
+    width: 100%;
+    padding: 0.4rem 0.5rem;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 1rem;
+  }
+
+  .planner-grid { overflow-x: auto; background: var(--card-bg); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); }
+  .planner-table { width: 100%; border-collapse: collapse; min-width: 760px; }
+  .planner-table th, .planner-table td { border: 1px solid var(--border); padding: 0.5rem; font-size: 0.85rem; vertical-align: top; white-space: normal; }
+  .planner-table thead th { background: var(--bg); position: sticky; top: 0; }
+  .planner-table th.meal-col, .planner-table td.meal-col {
+    position: sticky; left: 0; background: var(--bg); font-weight: 600; z-index: 1; white-space: nowrap;
+  }
+  .slot-btn {
+    width: 100%;
+    min-height: 54px;
+    background: none;
+    border: 1px dashed var(--border);
+    border-radius: 6px;
+    padding: 0.4rem;
+    cursor: pointer;
+    font-size: 0.8rem;
+    text-align: left;
+    color: var(--text-muted);
+  }
+  .slot-btn.filled { border-style: solid; border-color: var(--primary); color: var(--text); background: var(--primary-light); }
+  .slot-btn .slot-recipe { display: block; font-weight: 600; color: var(--text); }
+  .slot-btn .slot-cost { display: block; font-size: 0.75rem; color: var(--primary-dark); margin-top: 0.15rem; }
+  .day-cost-row td { background: var(--bg); font-weight: 600; }
+
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.45);
+    display: flex; align-items: center; justify-content: center;
+    padding: 1rem; z-index: 100;
+  }
+  .modal-overlay[hidden] { display: none; }
+  .modal {
+    background: var(--card-bg);
+    border-radius: var(--radius);
+    padding: 1.25rem;
+    width: 100%;
+    max-width: 480px;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+  }
+  .modal[hidden] { display: none; }
+  .modal h3 { margin-top: 0; }
+  .field { margin-bottom: 0.9rem; }
+  .field label { display: block; font-size: 0.8rem; font-weight: 600; margin-bottom: 0.3rem; color: var(--text-muted); }
+  .field input, .field select {
+    width: 100%;
+    padding: 0.5rem 0.6rem;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 0.95rem;
+  }
+  .field-row { display: flex; gap: 0.6rem; }
+  .field-row .field { flex: 1; }
+  .modal-actions { display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 1rem; }
+
+  .recipe-ing-list { list-style: none; margin: 0 0 0.75rem; padding: 0; display: flex; flex-direction: column; gap: 0.4rem; }
+  .recipe-ing-list li {
+    display: flex; align-items: center; justify-content: space-between;
+    background: var(--bg); border-radius: 6px; padding: 0.4rem 0.6rem; font-size: 0.85rem;
+  }
+  .recipe-ing-add { display: flex; gap: 0.5rem; align-items: flex-end; }
+  .recipe-ing-add .field { margin-bottom: 0; }
+  .recipe-ing-add .field.qty { max-width: 90px; }
+  .recipe-total { font-weight: 700; font-size: 1.05rem; margin: 0.75rem 0; text-align: right; }
+  .tooltip-wrap { position: relative; display: inline-block; }
+
+  .header-row { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; }
+  .icon-btn {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 0.4rem 0.75rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    cursor: pointer;
+  }
+  .icon-btn:hover { background: var(--bg); }
+  .checkbox-field label { display: flex; align-items: center; gap: 0.5rem; font-weight: 500; color: var(--text); font-size: 0.9rem; }
+  .checkbox-field input { width: auto; }
+
+  .modal-wide { max-width: 660px; }
+  .import-results { list-style: none; margin: 0 0 0.75rem; padding: 0; display: flex; flex-direction: column; gap: 0.4rem; max-height: 280px; overflow-y: auto; }
+  .import-results li {
+    display: flex; align-items: center; gap: 0.6rem;
+    padding: 0.4rem; border: 1px solid var(--border); border-radius: 6px; cursor: pointer; font-size: 0.9rem;
+  }
+  .import-results li:hover { background: var(--bg); border-color: var(--primary); }
+  .import-results img { width: 40px; height: 40px; border-radius: 6px; object-fit: cover; flex-shrink: 0; }
+  .import-status { font-size: 0.85rem; color: var(--text-muted); margin: 0 0 0.5rem; min-height: 1.1em; }
+  .import-hint { font-size: 0.8rem; color: var(--text-muted); margin: 0; }
+  .import-row-select, .import-row-input { width: 100%; padding: 0.3rem 0.4rem; border: 1px solid var(--border); border-radius: 5px; font-size: 0.8rem; }
+  .import-row-input:disabled { background: var(--bg); color: var(--text-muted); }
+  .mismatch-warning { color: var(--danger); font-size: 0.72rem; display: block; margin-top: 0.2rem; }
+  .needs-price { color: var(--danger); font-weight: 600; }
+
+  .link-btn {
+    background: none; border: none; padding: 0; margin-bottom: 0.75rem;
+    color: var(--primary); font-size: 0.85rem; font-weight: 600; cursor: pointer; text-decoration: underline;
+  }
+  .pack-calc-fields { margin-bottom: 0.75rem; }
+  .pack-calc-result { font-size: 0.85rem; color: var(--text-muted); display: flex; align-items: center; gap: 0.6rem; min-height: 1.8rem; }
+
+  .meal-remove-btn {
+    background: none; border: none; color: var(--text-muted); cursor: pointer;
+    font-size: 0.75rem; padding: 0 0 0 0.3rem;
+  }
+  .meal-remove-btn:hover { color: var(--danger); }
+
+  .shopping-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.5rem; }
+  .shopping-item {
+    background: var(--card-bg); border: 1px solid var(--border); border-radius: var(--radius);
+    box-shadow: var(--shadow); padding: 0.7rem 0.9rem;
+  }
+  .shopping-item { display: flex; align-items: center; gap: 0.55rem; }
+  .shopping-main { display: flex; align-items: center; gap: 0.6rem; flex: 1; min-width: 0; cursor: pointer; }
+  .shopping-item input[type="checkbox"] { width: 1.15rem; height: 1.15rem; flex-shrink: 0; }
+  .shopping-name { font-weight: 600; min-width: 0; overflow-wrap: anywhere; }
+  .shopping-qty { font-size: 0.85rem; color: var(--text-muted); white-space: nowrap; }
+  .shopping-cost { font-weight: 700; color: var(--accent-dark); white-space: nowrap; }
+  .shopping-item.checked { opacity: 0.55; }
+  .shopping-item.checked .shopping-name, .shopping-item.checked .shopping-cost { text-decoration: line-through; }
+  .shopping-progress { font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem; }
+  .shopping-tag { font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); background: var(--bg); border: 1px solid var(--border); border-radius: 20px; padding: 0.05rem 0.4rem; white-space: nowrap; }
+  .shopping-qty-input { width: 56px; padding: 0.25rem 0.35rem; border: 1px solid var(--border); border-radius: 5px; font-size: 0.8rem; text-align: right; }
+  .shopping-remove { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 0.95rem; line-height: 1; padding: 0 0.15rem; flex-shrink: 0; }
+  .shopping-remove:hover { color: var(--danger); }
+
+  .pantry-picker { margin-bottom: 1rem; }
+  .pantry-picker-panel { margin-top: 0.6rem; }
+  .pantry-picker-list { display: flex; flex-direction: column; gap: 0.15rem; max-height: 260px; overflow-y: auto; border: 1px solid var(--border); border-radius: var(--radius); padding: 0.35rem; background: var(--card-bg); }
+  .pantry-pick-item { display: flex; align-items: center; gap: 0.6rem; padding: 0.4rem 0.5rem; border-radius: 6px; cursor: pointer; font-size: 0.88rem; }
+  .pantry-pick-item:hover { background: var(--bg); }
+  .pantry-pick-item input[type="checkbox"] { width: 1.1rem; height: 1.1rem; flex-shrink: 0; }
+  .pantry-pick-item.on-plan { color: var(--text-muted); cursor: default; }
+  .pantry-pick-item.on-plan:hover { background: none; }
+  .pantry-pick-name { flex: 1; }
+  .pantry-pick-meta { font-size: 0.75rem; color: var(--text-muted); white-space: nowrap; }
+
+  .report-text {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 1rem;
+    margin: 0 0 0.75rem;
+    font-family: ui-monospace, "Courier New", monospace;
+    font-size: 0.78rem;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    max-height: 50vh;
+    overflow-y: auto;
+  }
+
+  @media (max-width: 640px) {
+    .field-row { flex-direction: column; }
+    header h1 { font-size: 1.2rem; }
+    header { padding: 1rem 1rem 0; }
+    main { padding: 1rem; }
+    .tab-btn { padding: 0.55rem 0.7rem; font-size: 0.85rem; }
+  }
+
+  @media print {
+    header, main, .modal-overlay > .modal:not(#reportModal) { display: none !important; }
+    .modal-overlay { position: static !important; background: none !important; padding: 0 !important; }
+    #reportModal { max-width: 100% !important; max-height: none !important; overflow: visible !important; box-shadow: none !important; border: none !important; }
+    #reportModal .modal-actions { display: none !important; }
+    .report-text { max-height: none !important; overflow: visible !important; border: none !important; background: none !important; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-row">
+    <h1>🍽 Meal Budgeter</h1>
+    <button class="icon-btn" id="settingsBtn" data-i18n="settings_btn">⚙ Settings</button>
+  </div>
+  <nav class="tabs">
+    <button class="tab-btn active" data-tab="pantry" data-i18n="tab_pantry">Pantry</button>
+    <button class="tab-btn" data-tab="recipes" data-i18n="tab_recipes">Recipes</button>
+    <button class="tab-btn" data-tab="planner" data-i18n="tab_planner">Planner</button>
+    <button class="tab-btn" data-tab="shopping" data-i18n="tab_shopping">Shopping List</button>
+  </nav>
+</header>
+
+<main>
+
+  <section id="tab-pantry" class="tab-panel active">
+    <div class="panel-header">
+      <h2 data-i18n="pantry_heading">Pantry &amp; Prices</h2>
+      <div class="row-actions">
+        <button class="btn" id="translateAllBtn" hidden data-i18n="translate_all_btn">🌐 Translate Ingredients</button>
+        <button class="btn btn-primary" id="addIngredientBtn" data-i18n="add_ingredient_btn">+ Add Ingredient</button>
+      </div>
+    </div>
+    <div id="pantryEmpty" class="empty-state" hidden data-i18n="pantry_empty">
+      No ingredients yet. Add your first ingredient to start pricing recipes.
+    </div>
+    <div class="table-wrap" id="pantryTableWrap" hidden>
+      <table>
+        <thead>
+          <tr>
+            <th data-i18n="th_name">Name</th>
+            <th data-i18n="th_unit">Unit</th>
+            <th data-i18n="th_price_unit">Price / Unit</th>
+            <th data-i18n="th_last_updated">Last Updated</th>
+            <th data-i18n="th_actions">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="pantryTbody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="tab-recipes" class="tab-panel">
+    <div class="panel-header">
+      <h2 data-i18n="recipes_heading">Recipes</h2>
+      <div class="row-actions">
+        <button class="btn" id="importRecipeBtn" data-i18n="import_recipe_btn">Import from TheMealDB</button>
+        <button class="btn btn-primary" id="addRecipeBtn" data-i18n="new_recipe_btn">+ New Recipe</button>
+      </div>
+    </div>
+    <div id="recipesEmpty" class="empty-state" hidden data-i18n="recipes_empty">
+      No recipes yet. Create a recipe from ingredients in your Pantry.
+    </div>
+    <div class="card-grid" id="recipeGrid"></div>
+  </section>
+
+  <section id="tab-planner" class="tab-panel">
+    <div class="panel-header">
+      <h2 data-i18n="planner_heading">Weekly Planner</h2>
+      <div class="row-actions">
+        <button class="btn" id="reportBtn" data-i18n="report_btn">📋 Report</button>
+        <button class="btn" id="addMealTypeBtn" data-i18n="add_meal_type_btn">+ Add Meal Type</button>
+      </div>
+    </div>
+
+    <div class="budget-dashboard" id="budgetDashboard">
+      <div class="stat-card">
+        <div class="label" data-i18n="stat_weekly_cost_label">Total Weekly Cost</div>
+        <div class="value" id="statWeeklyCost">$0.00</div>
+      </div>
+      <div class="stat-card">
+        <div class="label" data-i18n="stat_daily_cost_label">Cost / Day (avg)</div>
+        <div class="value" id="statDailyCost">$0.00</div>
+      </div>
+      <div class="stat-card" id="statBudgetCard">
+        <div class="label" data-i18n="stat_budget_remaining_label">Weekly Budget Remaining</div>
+        <div class="value" id="statBudgetRemaining">$0.00</div>
+      </div>
+      <div class="stat-card">
+        <div class="label" data-i18n="stat_budget_goal_label">Weekly Budget Goal</div>
+        <input type="number" id="budgetGoalInput" min="0" step="0.01" placeholder="0.00">
+      </div>
+    </div>
+
+    <div id="plannerEmpty" class="empty-state" hidden data-i18n="planner_empty">
+      Create at least one recipe before planning your week.
+    </div>
+    <div class="planner-grid" id="plannerGridWrap" hidden>
+      <table class="planner-table" id="plannerTable"></table>
+    </div>
+  </section>
+
+  <section id="tab-shopping" class="tab-panel">
+    <div class="panel-header">
+      <h2 data-i18n="shopping_heading">Shopping List</h2>
+      <div class="row-actions">
+        <button class="btn btn-primary" id="shareShoppingBtn" data-i18n="btn_share">↗ Share</button>
+        <button class="btn" id="clearCheckedBtn" data-i18n="btn_clear_checked">Clear Checked</button>
+      </div>
+    </div>
+    <div class="pantry-picker" id="pantryPicker" hidden>
+      <button type="button" class="btn" id="togglePantryPickerBtn" data-i18n="add_from_pantry_btn">＋ Add from Pantry</button>
+      <div class="pantry-picker-panel" id="pantryPickerPanel" hidden>
+        <p class="import-hint" data-i18n="pantry_picker_hint">Tick pantry items to add them to your list.</p>
+        <div class="pantry-picker-list" id="pantryPickerList"></div>
+      </div>
+    </div>
+    <div id="shoppingSummary" class="stat-card" hidden>
+      <div class="label" data-i18n="shopping_total_label">Estimated Total</div>
+      <div class="value" id="shoppingTotalValue">RD$0</div>
+      <div class="shopping-progress" id="shoppingProgress"></div>
+    </div>
+    <div id="shoppingEmpty" class="empty-state" hidden data-i18n="shopping_empty">
+      Your shopping list is empty. Plan meals in the Weekly Planner, or add items from your Pantry below.
+    </div>
+    <ul class="shopping-list" id="shoppingListEl"></ul>
+  </section>
+
+</main>
+
+<div class="modal-overlay" id="modalOverlay" hidden>
+
+  <div class="modal" id="ingredientModal" hidden>
+    <h3 id="ingredientModalTitle">Add Ingredient</h3>
+    <form id="ingredientForm">
+      <input type="hidden" id="ingredientId">
+      <div class="field">
+        <label for="ingredientName" data-i18n="field_name">Name</label>
+        <input type="text" id="ingredientName" required placeholder="e.g. Chicken Breast" data-i18n-placeholder="placeholder_ingredient_name">
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label for="ingredientUnit" data-i18n="field_unit">Unit of Measurement</label>
+          <input type="text" id="ingredientUnit" list="unitOptions" required placeholder="e.g. grams" data-i18n-placeholder="placeholder_ingredient_unit">
+          <datalist id="unitOptions">
+            <option value="grams">
+            <option value="kilograms">
+            <option value="ounces">
+            <option value="pounds">
+            <option value="cups">
+            <option value="tablespoons">
+            <option value="teaspoons">
+            <option value="milliliters">
+            <option value="liters">
+            <option value="pieces">
+          </datalist>
+        </div>
+        <div class="field">
+          <label for="ingredientPrice" id="ingredientPriceLabel">Price per Unit</label>
+          <input type="number" id="ingredientPrice" min="0" step="any" required placeholder="0.00">
+        </div>
+      </div>
+
+      <div class="pack-calc">
+        <button type="button" class="link-btn" id="togglePackCalcBtn" data-i18n="toggle_pack_calc">🧮 Calculate from pack price</button>
+        <div class="pack-calc-fields" id="packCalcFields" hidden>
+          <div class="field-row">
+            <div class="field">
+              <label for="packPriceInput" data-i18n="field_pack_price">Total Pack Price</label>
+              <input type="number" id="packPriceInput" min="0" step="any" placeholder="0.00">
+            </div>
+            <div class="field">
+              <label for="packQtyInput" data-i18n="field_pack_qty">Quantity in Pack</label>
+              <input type="number" id="packQtyInput" min="0" step="any" placeholder="e.g. 6">
+            </div>
+          </div>
+          <div class="pack-calc-result" id="packCalcResult"></div>
+        </div>
+      </div>
+
+      <div class="modal-actions">
+        <button type="button" class="btn" id="cancelIngredientBtn" data-i18n="btn_cancel">Cancel</button>
+        <button type="submit" class="btn btn-primary" data-i18n="btn_save_ingredient">Save Ingredient</button>
+      </div>
+    </form>
+  </div>
+
+  <div class="modal" id="recipeModal" hidden>
+    <h3 id="recipeModalTitle">New Recipe</h3>
+    <form id="recipeForm">
+      <input type="hidden" id="recipeId">
+      <div class="field">
+        <label for="recipeName" data-i18n="field_recipe_name">Recipe Name</label>
+        <input type="text" id="recipeName" required placeholder="e.g. Chicken Stir Fry" data-i18n-placeholder="placeholder_recipe_name">
+      </div>
+
+      <div class="field">
+        <label data-i18n="field_ingredients">Ingredients</label>
+        <ul class="recipe-ing-list" id="recipeIngList"></ul>
+        <div class="recipe-ing-add">
+          <div class="field" style="flex:2">
+            <select id="recipeIngSelect"></select>
+          </div>
+          <div class="field qty">
+            <input type="number" id="recipeIngQty" min="0" step="any" placeholder="Qty" data-i18n-placeholder="placeholder_qty">
+          </div>
+          <button type="button" class="btn btn-sm" id="recipeIngAddBtn" data-i18n="btn_add">Add</button>
+        </div>
+      </div>
+
+      <div class="recipe-total"><span data-i18n="label_total_cost">Total Cost:</span> <span id="recipeTotalCost">$0.00</span></div>
+
+      <div class="modal-actions">
+        <button type="button" class="btn" id="cancelRecipeBtn" data-i18n="btn_cancel">Cancel</button>
+        <button type="submit" class="btn btn-primary" data-i18n="btn_save_recipe">Save Recipe</button>
+      </div>
+    </form>
+  </div>
+
+  <div class="modal" id="slotModal" hidden>
+    <h3 id="slotModalTitle">Assign Recipe</h3>
+    <div class="field">
+      <label for="slotRecipeSelect" data-i18n="field_recipe">Recipe</label>
+      <select id="slotRecipeSelect"></select>
+    </div>
+    <div class="field">
+      <label for="slotQtyInput" data-i18n="field_meal_qty">Quantity (servings)</label>
+      <input type="number" id="slotQtyInput" min="1" step="1" value="1">
+    </div>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-danger" id="slotClearBtn" data-i18n="btn_clear_slot">Clear Slot</button>
+      <button type="button" class="btn" id="cancelSlotBtn" data-i18n="btn_cancel">Cancel</button>
+      <button type="button" class="btn btn-primary" id="slotSaveBtn" data-i18n="btn_assign">Assign</button>
+    </div>
+  </div>
+
+  <div class="modal" id="mealTypeModal" hidden>
+    <h3 data-i18n="add_meal_type_title">Add Meal Type</h3>
+    <div class="field">
+      <label for="mealTypeName" data-i18n="field_meal_type_name">Meal Name</label>
+      <input type="text" id="mealTypeName" placeholder="e.g. Snack" data-i18n-placeholder="placeholder_meal_type_name">
+    </div>
+    <div class="field">
+      <label for="mealTypePosition" data-i18n="field_position">Position</label>
+      <select id="mealTypePosition"></select>
+    </div>
+    <div class="modal-actions">
+      <button type="button" class="btn" id="cancelMealTypeBtn" data-i18n="btn_cancel">Cancel</button>
+      <button type="button" class="btn btn-primary" id="saveMealTypeBtn" data-i18n="btn_add">Add</button>
+    </div>
+  </div>
+
+  <div class="modal modal-wide" id="reportModal" hidden>
+    <h3 data-i18n="report_title">Weekly Report</h3>
+    <pre class="report-text" id="reportText"></pre>
+    <div class="modal-actions">
+      <button type="button" class="btn" id="closeReportBtn" data-i18n="btn_close">Close</button>
+      <button type="button" class="btn" id="copyReportBtn" data-i18n="btn_copy">📋 Copy</button>
+      <button type="button" class="btn btn-primary" id="printReportBtn" data-i18n="btn_print">🖨 Print</button>
+    </div>
+  </div>
+
+  <div class="modal" id="settingsModal" hidden>
+    <h3 data-i18n="settings_title">Settings</h3>
+    <div class="field">
+      <label for="languageSelect" data-i18n="field_language">Language</label>
+      <select id="languageSelect">
+        <option value="en">English</option>
+        <option value="es">Español</option>
+      </select>
+    </div>
+    <div class="field">
+      <label for="currencySymbolInput" data-i18n="field_currency_symbol">Currency Symbol</label>
+      <input type="text" id="currencySymbolInput" maxlength="6" placeholder="RD$">
+    </div>
+    <div class="field checkbox-field">
+      <label><input type="checkbox" id="showCentsInput"> <span data-i18n="field_show_cents">Show cents in totals</span></label>
+    </div>
+    <div class="field">
+      <label data-i18n="field_data">Data</label>
+      <div class="row-actions">
+        <button type="button" class="btn" id="exportDataBtn" data-i18n="btn_export">⬇ Export Backup</button>
+        <label class="btn" id="importDataLbl">
+          <span data-i18n="btn_import">⬆ Import Backup</span>
+          <input type="file" id="importDataFile" accept=".json" style="display:none">
+        </label>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-primary" id="closeSettingsBtn" data-i18n="btn_done">Done</button>
+    </div>
+  </div>
+
+  <div class="modal" id="importSearchModal" hidden>
+    <h3 data-i18n="import_search_title">Import Recipe from TheMealDB</h3>
+    <div class="field-row">
+      <div class="field" style="flex:1">
+        <label for="importSearchInput" data-i18n="field_search_by_name">Search by recipe name</label>
+        <input type="text" id="importSearchInput" placeholder="e.g. Chicken Curry" data-i18n-placeholder="placeholder_search_recipe">
+      </div>
+      <button type="button" class="btn btn-primary" id="importSearchBtn" style="align-self:flex-end; margin-bottom:0.9rem;" data-i18n="btn_search">Search</button>
+    </div>
+    <div class="import-status" id="importSearchStatus"></div>
+    <ul class="import-results" id="importResultsList"></ul>
+    <div class="modal-actions">
+      <button type="button" class="btn" id="cancelImportSearchBtn" data-i18n="btn_cancel">Cancel</button>
+    </div>
+  </div>
+
+  <div class="modal modal-wide" id="importReviewModal" hidden>
+    <h3 data-i18n="import_review_title">Review Import</h3>
+    <div class="field">
+      <label for="importRecipeName" data-i18n="field_recipe_name">Recipe Name</label>
+      <input type="text" id="importRecipeName">
+    </div>
+    <div class="table-wrap" style="margin-bottom:0.75rem;">
+      <table>
+        <thead><tr><th data-i18n="th_ingredient">Ingredient</th><th data-i18n="th_qty">Qty</th><th data-i18n="th_unit">Unit</th><th data-i18n="th_pantry_match">Pantry Match</th></tr></thead>
+        <tbody id="importIngredientsTbody"></tbody>
+      </table>
+    </div>
+    <p class="import-hint" id="importHint"></p>
+    <div class="modal-actions">
+      <button type="button" class="btn" id="backToSearchBtn" data-i18n="btn_back">Back</button>
+      <button type="button" class="btn" id="cancelImportReviewBtn" data-i18n="btn_cancel">Cancel</button>
+      <button type="button" class="btn btn-primary" id="confirmImportBtn" data-i18n="btn_import_recipe">Import Recipe</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  const STORAGE_KEY = "mealBudgeter_state_v1";
+  const DAYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
+  // The 3 default meal slots use translation keys so their labels follow the language
+  // setting; user-added slots (e.g. "Merienda") store their own free-text name instead,
+  // same as ingredient/recipe names — there's no dictionary entry to translate them by.
+  const DEFAULT_MEAL_TYPES = [
+    { id: "breakfast", labelKey: "meal_breakfast", order: 0 },
+    { id: "lunch", labelKey: "meal_lunch", order: 10 },
+    { id: "dinner", labelKey: "meal_dinner", order: 20 }
+  ];
+
+  // ============================================================
+  // I18N — English / Spanish
+  // ============================================================
+  const I18N = {
+    en: {
+      settings_btn: "⚙ Settings",
+      tab_pantry: "Pantry", tab_recipes: "Recipes", tab_planner: "Planner",
+      pantry_heading: "Pantry & Prices",
+      add_ingredient_btn: "+ Add Ingredient",
+      pantry_empty: "No ingredients yet. Add your first ingredient to start pricing recipes.",
+      th_name: "Name", th_unit: "Unit", th_price_unit: "Price / Unit", th_last_updated: "Last Updated", th_actions: "Actions",
+      recipes_heading: "Recipes",
+      import_recipe_btn: "Import from TheMealDB",
+      new_recipe_btn: "+ New Recipe",
+      recipes_empty: "No recipes yet. Create a recipe from ingredients in your Pantry.",
+      planner_heading: "Weekly Planner",
+      stat_weekly_cost_label: "Total Weekly Cost",
+      stat_daily_cost_label: "Cost / Day (avg)",
+      stat_budget_remaining_label: "Weekly Budget Remaining",
+      stat_budget_goal_label: "Weekly Budget Goal",
+      planner_empty: "Create at least one recipe before planning your week.",
+      field_name: "Name", placeholder_ingredient_name: "e.g. Chicken Breast",
+      field_unit: "Unit of Measurement", placeholder_ingredient_unit: "e.g. grams",
+      field_price_per_unit: "Price per Unit",
+      btn_cancel: "Cancel", btn_save_ingredient: "Save Ingredient",
+      ingredient_add_title: "Add Ingredient", ingredient_edit_title: "Edit Ingredient",
+      field_recipe_name: "Recipe Name", placeholder_recipe_name: "e.g. Chicken Stir Fry",
+      field_ingredients: "Ingredients", placeholder_qty: "Qty", btn_add: "Add",
+      label_total_cost: "Total Cost:", btn_save_recipe: "Save Recipe",
+      recipe_new_title: "New Recipe", recipe_edit_title: "Edit Recipe",
+      btn_remove: "Remove", ingredients_needed_first: "Add ingredients in Pantry first",
+      removed_ingredient: "(removed ingredient)", no_ingredients: "No ingredients",
+      slot_assign_title: "Assign Recipe", field_recipe: "Recipe", select_a_recipe: "— Select a recipe —",
+      field_meal_qty: "Quantity (servings)",
+      btn_clear_slot: "Clear Slot", btn_assign: "Assign",
+      th_meal: "Meal", day_total: "Day Total", add_slot: "+ Add",
+      set_a_goal: "Set a goal", left_suffix: " left", over_suffix: " over",
+      day_monday: "Mon", day_tuesday: "Tue", day_wednesday: "Wed", day_thursday: "Thu", day_friday: "Fri", day_saturday: "Sat", day_sunday: "Sun",
+      meal_breakfast: "Breakfast", meal_lunch: "Lunch", meal_dinner: "Dinner",
+      btn_edit: "Edit", btn_delete: "Delete", btn_fetch_live_price: "Fetch Live Price",
+      tooltip_coming_soon: "Coming soon: API integration", needs_price_suffix: " — needs price",
+      confirm_delete_ingredient_used: "This ingredient is used in: {names}.\nDeleting it will remove it from those recipes. Continue?",
+      confirm_delete_ingredient: "Delete this ingredient?",
+      confirm_delete_recipe_used: "This recipe is used in your weekly plan. Deleting it will clear those slots. Continue?",
+      confirm_delete_recipe: "Delete this recipe?",
+      settings_title: "Settings", field_currency_symbol: "Currency Symbol",
+      field_show_cents: "Show cents in totals", field_language: "Language", btn_done: "Done",
+      import_search_title: "Import Recipe from TheMealDB", field_search_by_name: "Search by recipe name",
+      placeholder_search_recipe: "e.g. Chicken Curry", btn_search: "Search", searching: "Searching…",
+      no_results: 'No recipes found for "{query}".',
+      result_singular: "{n} result", result_plural: "{n} results",
+      fetch_error: "Couldn't reach TheMealDB. Check your connection and try again.",
+      import_review_title: "Review Import", th_ingredient: "Ingredient", th_qty: "Qty", th_pantry_match: "Pantry Match",
+      create_new_prefix: '+ Create new: "{name}"',
+      mismatch_warning: '⚠ pantry unit is "{unit}" — check quantity',
+      new_ingredients_hint_singular: "{n} new ingredient will be added to your Pantry with no price set — remember to price it.",
+      new_ingredients_hint_plural: "{n} new ingredients will be added to your Pantry with no price set — remember to price them.",
+      all_matched: "All ingredients matched existing pantry items.",
+      btn_back: "Back", btn_import_recipe: "Import Recipe",
+      translate_all_btn: "🌐 Translate Ingredients",
+      translating: "Translating…",
+      btn_translate_tooltip: "Translate name",
+      translate_error: "Translation failed — click to retry",
+      toggle_pack_calc: "🧮 Calculate from pack price",
+      field_pack_price: "Total Pack Price",
+      field_pack_qty: "Quantity in Pack",
+      pack_calc_result: "= {price} per unit",
+      btn_apply: "Apply",
+      add_meal_type_btn: "+ Add Meal Type",
+      add_meal_type_title: "Add Meal Type",
+      field_meal_type_name: "Meal Name",
+      placeholder_meal_type_name: "e.g. Snack",
+      field_position: "Position",
+      position_before: "Before {name}",
+      position_after: "After {name}",
+      remove_meal_type: "Remove this meal slot",
+      confirm_remove_meal_type: "Remove this meal slot? Any recipes assigned to it this week will be cleared.",
+      tab_shopping: "Shopping List",
+      shopping_heading: "Shopping List",
+      shopping_empty: "Your shopping list is empty. Plan meals in the Weekly Planner, or add items from your Pantry below.",
+      shopping_empty_no_pantry: "Your shopping list is empty. Add ingredients to your Pantry first.",
+      shopping_total_label: "Estimated Total",
+      shopping_progress: "{checked} of {total} checked",
+      btn_clear_checked: "Clear Checked",
+      add_from_pantry_btn: "＋ Add from Pantry",
+      pantry_picker_hint: "Tick pantry items to add them to your list (e.g. staples not tied to a planned meal).",
+      from_plan_tag: "from plan",
+      remove_item: "Remove from list",
+      btn_share: "↗ Share",
+      share_copied: "✓ Copied — paste it into your chat app",
+      share_list_title: "🛒 Shopping List",
+      report_btn: "📋 Report",
+      report_title: "Weekly Report",
+      btn_close: "Close",
+      btn_copy: "📋 Copy",
+      btn_print: "🖨 Print",
+      copied_feedback: "✓ Copied!",
+      copy_error: "Couldn't copy to clipboard",
+      report_header: "MEAL BUDGETER — WEEKLY REPORT",
+      report_generated: "Generated: {date}",
+      report_budget_summary: "BUDGET SUMMARY",
+      report_weekly_plan: "WEEKLY MEAL PLAN",
+      report_shopping_list: "SHOPPING LIST",
+      field_data: "Data",
+      btn_export: "⬇ Export Backup",
+      btn_import: "⬆ Import Backup",
+      import_invalid_file: "That doesn't look like a Meal Budgeter backup file.",
+      confirm_import_overwrite: "Importing will replace all current data (pantry, recipes, planner). Continue?",
+      import_success: "Backup imported successfully."
+    },
+    es: {
+      settings_btn: "⚙ Configuración",
+      tab_pantry: "Despensa", tab_recipes: "Recetas", tab_planner: "Planificador",
+      pantry_heading: "Despensa y Precios",
+      add_ingredient_btn: "+ Agregar Ingrediente",
+      pantry_empty: "Aún no hay ingredientes. Agrega tu primer ingrediente para empezar a calcular el costo de las recetas.",
+      th_name: "Nombre", th_unit: "Unidad", th_price_unit: "Precio / Unidad", th_last_updated: "Última Actualización", th_actions: "Acciones",
+      recipes_heading: "Recetas",
+      import_recipe_btn: "Importar desde TheMealDB",
+      new_recipe_btn: "+ Nueva Receta",
+      recipes_empty: "Aún no hay recetas. Crea una receta con los ingredientes de tu despensa.",
+      planner_heading: "Planificador Semanal",
+      stat_weekly_cost_label: "Costo Semanal Total",
+      stat_daily_cost_label: "Costo / Día (prom.)",
+      stat_budget_remaining_label: "Presupuesto Semanal Restante",
+      stat_budget_goal_label: "Meta de Presupuesto Semanal",
+      planner_empty: "Crea al menos una receta antes de planificar tu semana.",
+      field_name: "Nombre", placeholder_ingredient_name: "ej. Pechuga de Pollo",
+      field_unit: "Unidad de Medida", placeholder_ingredient_unit: "ej. gramos",
+      field_price_per_unit: "Precio por Unidad",
+      btn_cancel: "Cancelar", btn_save_ingredient: "Guardar Ingrediente",
+      ingredient_add_title: "Agregar Ingrediente", ingredient_edit_title: "Editar Ingrediente",
+      field_recipe_name: "Nombre de la Receta", placeholder_recipe_name: "ej. Salteado de Pollo",
+      field_ingredients: "Ingredientes", placeholder_qty: "Cant.", btn_add: "Agregar",
+      label_total_cost: "Costo Total:", btn_save_recipe: "Guardar Receta",
+      recipe_new_title: "Nueva Receta", recipe_edit_title: "Editar Receta",
+      btn_remove: "Quitar", ingredients_needed_first: "Agrega ingredientes en la Despensa primero",
+      removed_ingredient: "(ingrediente eliminado)", no_ingredients: "Sin ingredientes",
+      slot_assign_title: "Asignar Receta", field_recipe: "Receta", select_a_recipe: "— Selecciona una receta —",
+      field_meal_qty: "Cantidad (porciones)",
+      btn_clear_slot: "Vaciar Espacio", btn_assign: "Asignar",
+      th_meal: "Comida", day_total: "Total del Día", add_slot: "+ Agregar",
+      set_a_goal: "Define una meta", left_suffix: " restante", over_suffix: " sobre el presupuesto",
+      day_monday: "Lun", day_tuesday: "Mar", day_wednesday: "Mié", day_thursday: "Jue", day_friday: "Vie", day_saturday: "Sáb", day_sunday: "Dom",
+      meal_breakfast: "Desayuno", meal_lunch: "Almuerzo", meal_dinner: "Cena",
+      btn_edit: "Editar", btn_delete: "Eliminar", btn_fetch_live_price: "Buscar Precio en Vivo",
+      tooltip_coming_soon: "Próximamente: integración con API", needs_price_suffix: " — necesita precio",
+      confirm_delete_ingredient_used: "Este ingrediente se usa en: {names}.\nEliminarlo lo quitará de esas recetas. ¿Continuar?",
+      confirm_delete_ingredient: "¿Eliminar este ingrediente?",
+      confirm_delete_recipe_used: "Esta receta está en tu planificador semanal. Eliminarla vaciará esos espacios. ¿Continuar?",
+      confirm_delete_recipe: "¿Eliminar esta receta?",
+      settings_title: "Configuración", field_currency_symbol: "Símbolo de Moneda",
+      field_show_cents: "Mostrar centavos en los totales", field_language: "Idioma", btn_done: "Listo",
+      import_search_title: "Importar Receta desde TheMealDB", field_search_by_name: "Buscar por nombre de receta",
+      placeholder_search_recipe: "ej. Curry de Pollo", btn_search: "Buscar", searching: "Buscando…",
+      no_results: 'No se encontraron recetas para "{query}".',
+      result_singular: "{n} resultado", result_plural: "{n} resultados",
+      fetch_error: "No se pudo conectar con TheMealDB. Verifica tu conexión e intenta de nuevo.",
+      import_review_title: "Revisar Importación", th_ingredient: "Ingrediente", th_qty: "Cant.", th_pantry_match: "Coincidencia en Despensa",
+      create_new_prefix: '+ Crear nuevo: "{name}"',
+      mismatch_warning: '⚠ la unidad en la despensa es "{unit}" — revisa la cantidad',
+      new_ingredients_hint_singular: "Se agregará {n} ingrediente nuevo a tu Despensa sin precio — recuerda ponerle precio.",
+      new_ingredients_hint_plural: "Se agregarán {n} ingredientes nuevos a tu Despensa sin precio — recuerda ponerles precio.",
+      all_matched: "Todos los ingredientes coinciden con productos existentes en la despensa.",
+      btn_back: "Atrás", btn_import_recipe: "Importar Receta",
+      translate_all_btn: "🌐 Traducir Ingredientes",
+      translating: "Traduciendo…",
+      btn_translate_tooltip: "Traducir nombre",
+      translate_error: "Error al traducir — haz clic para reintentar",
+      toggle_pack_calc: "🧮 Calcular por precio del paquete",
+      field_pack_price: "Precio Total del Paquete",
+      field_pack_qty: "Cantidad en el Paquete",
+      pack_calc_result: "= {price} por unidad",
+      btn_apply: "Aplicar",
+      add_meal_type_btn: "+ Agregar Comida",
+      add_meal_type_title: "Agregar Comida",
+      field_meal_type_name: "Nombre de la Comida",
+      placeholder_meal_type_name: "ej. Merienda",
+      field_position: "Posición",
+      position_before: "Antes de {name}",
+      position_after: "Después de {name}",
+      remove_meal_type: "Quitar esta comida",
+      confirm_remove_meal_type: "¿Quitar esta comida? Las recetas asignadas a ella esta semana se borrarán.",
+      tab_shopping: "Lista de Compras",
+      shopping_heading: "Lista de Compras",
+      shopping_empty: "Tu lista de compras está vacía. Planifica comidas en el Planificador Semanal, o agrega productos de tu Despensa abajo.",
+      shopping_empty_no_pantry: "Tu lista de compras está vacía. Agrega ingredientes a tu Despensa primero.",
+      shopping_total_label: "Total Estimado",
+      shopping_progress: "{checked} de {total} marcados",
+      btn_clear_checked: "Limpiar Marcados",
+      add_from_pantry_btn: "＋ Agregar de la Despensa",
+      pantry_picker_hint: "Marca productos de la despensa para agregarlos a tu lista (ej. básicos que no están en una comida planificada).",
+      from_plan_tag: "del plan",
+      remove_item: "Quitar de la lista",
+      btn_share: "↗ Compartir",
+      share_copied: "✓ Copiado — pégalo en tu app de chat",
+      share_list_title: "🛒 Lista de Compras",
+      report_btn: "📋 Reporte",
+      report_title: "Reporte Semanal",
+      btn_close: "Cerrar",
+      btn_copy: "📋 Copiar",
+      btn_print: "🖨 Imprimir",
+      copied_feedback: "✓ ¡Copiado!",
+      copy_error: "No se pudo copiar al portapapeles",
+      report_header: "MEAL BUDGETER — REPORTE SEMANAL",
+      report_generated: "Generado: {date}",
+      report_budget_summary: "RESUMEN DE PRESUPUESTO",
+      report_weekly_plan: "PLAN SEMANAL DE COMIDAS",
+      report_shopping_list: "LISTA DE COMPRAS",
+      field_data: "Datos",
+      btn_export: "⬇ Exportar Respaldo",
+      btn_import: "⬆ Importar Respaldo",
+      import_invalid_file: "Ese archivo no parece ser un respaldo de Meal Budgeter.",
+      confirm_import_overwrite: "Importar reemplazará todos los datos actuales (despensa, recetas, planificador). ¿Continuar?",
+      import_success: "Respaldo importado exitosamente."
+    }
+  };
+
+  function t(key, vars) {
+    const lang = (state.settings && state.settings.language) || "en";
+    let str = (I18N[lang] && I18N[lang][key] != null) ? I18N[lang][key] : I18N.en[key];
+    if (vars) {
+      Object.keys(vars).forEach(k => { str = str.split("{" + k + "}").join(vars[k]); });
+    }
+    return str == null ? key : str;
+  }
+
+  function dayLabel(day) { return t("day_" + day); }
+  function mealTypeLabel(mt) { return mt.labelKey ? t(mt.labelKey) : mt.name; }
+  function findMealType(id) { return state.mealTypes.find(mt => mt.id === id); }
+  function sortedMealTypes() { return state.mealTypes.slice().sort((a, b) => a.order - b.order); }
+
+  // A planner slot is either null or { recipeId, qty }. These helpers also tolerate
+  // the legacy shape where a slot was just the recipeId string (pre-quantity saves).
+  function slotRecipeId(slot) { return (slot && typeof slot === "object") ? slot.recipeId : (slot || null); }
+  function slotQty(slot) { return (slot && typeof slot === "object" && slot.qty > 0) ? slot.qty : 1; }
+
+  const UNIT_SUGGESTIONS = {
+    en: ["grams", "kilograms", "ounces", "pounds", "cups", "tablespoons", "teaspoons", "milliliters", "liters", "pieces", "package", "bag"],
+    es: ["gramos", "kilogramos", "onzas", "libras", "tazas", "cucharadas", "cucharaditas", "mililitros", "litros", "piezas", "paquete", "bolsa"]
+  };
+
+  function applyStaticTranslations() {
+    const lang = (state.settings && state.settings.language) || "en";
+    document.documentElement.lang = lang;
+    document.querySelectorAll("[data-i18n]").forEach(el => {
+      el.textContent = t(el.getAttribute("data-i18n"));
+    });
+    document.querySelectorAll("[data-i18n-placeholder]").forEach(el => {
+      el.placeholder = t(el.getAttribute("data-i18n-placeholder"));
+    });
+    const unitDatalist = document.getElementById("unitOptions");
+    unitDatalist.innerHTML = (UNIT_SUGGESTIONS[lang] || UNIT_SUGGESTIONS.en).map(u => `<option value="${u}">`).join("");
+  }
+
+  // Ingredient names are stored once, in whatever language they were typed/imported in
+  // (TheMealDB imports are always English). This shows a cached translation for the
+  // current UI language when one exists, without touching the stored canonical name —
+  // matching logic elsewhere (import dedup, edit form) always uses ing.name directly.
+  function ingredientDisplayName(ing) {
+    const lang = state.settings.language;
+    if (lang !== "en" && ing.translations && ing.translations[lang]) return ing.translations[lang];
+    return ing.name;
+  }
+
+  // MyMemory is a free, CORS-open translation API — no key needed for light personal use.
+  async function translateText(text, targetLang, sourceLang) {
+    const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${sourceLang || "en"}|${targetLang}`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error("Translation request failed");
+    const data = await res.json();
+    const translated = data && data.responseData && data.responseData.translatedText;
+    if (!translated) throw new Error("No translation returned");
+    return translated;
+  }
+
+  // Architectural hook: a future backend scraper implements this to return a live price.
+  // Left unwired (button stays disabled) until that service exists.
+  const PriceService = {
+    async fetchLivePrice(ingredientId) {
+      throw new Error("Live price fetching is not implemented yet.");
+    }
+  };
+
+  function uid() {
+    return (crypto.randomUUID ? crypto.randomUUID() : "id-" + Date.now() + "-" + Math.random().toString(16).slice(2));
+  }
+
+  function emptyMealPlan(mealTypes) {
+    const plan = {};
+    DAYS.forEach(day => {
+      plan[day] = {};
+      mealTypes.forEach(mt => { plan[day][mt.id] = null; });
+    });
+    return plan;
+  }
+
+  function loadState() {
+    let raw;
+    try {
+      raw = JSON.parse(localStorage.getItem(STORAGE_KEY));
+    } catch (e) {
+      raw = null;
+    }
+    const st = Object.assign({
+      ingredients: [],
+      recipes: [],
+      mealTypes: DEFAULT_MEAL_TYPES.map(mt => ({ ...mt })),
+      mealPlan: emptyMealPlan(DEFAULT_MEAL_TYPES),
+      budgetGoal: 0,
+      shoppingChecked: {},
+      shoppingExtra: {},
+      settings: { currencySymbol: "RD$", showCents: false, language: "en" }
+    }, raw || {});
+    if (!Array.isArray(st.mealTypes) || st.mealTypes.length === 0) {
+      st.mealTypes = DEFAULT_MEAL_TYPES.map(mt => ({ ...mt }));
+    }
+    // Backfills missing per-day slot keys — covers both legacy saves (pre-dating
+    // mealTypes) and meal types added after a day object was already persisted.
+    DAYS.forEach(day => {
+      if (!st.mealPlan[day]) st.mealPlan[day] = {};
+      st.mealTypes.forEach(mt => {
+        if (!(mt.id in st.mealPlan[day])) st.mealPlan[day][mt.id] = null;
+      });
+      // Migrate legacy string slot values (bare recipeId) → { recipeId, qty: 1 }.
+      Object.keys(st.mealPlan[day]).forEach(mtId => {
+        const v = st.mealPlan[day][mtId];
+        if (typeof v === "string") st.mealPlan[day][mtId] = { recipeId: v, qty: 1 };
+      });
+    });
+    st.settings = Object.assign({ currencySymbol: "RD$", showCents: false, language: "en" }, st.settings || {});
+    st.shoppingChecked = st.shoppingChecked || {};
+    st.shoppingExtra = st.shoppingExtra || {};
+    return st;
+  }
+
+  let state = loadState();
+
+  function normalizeMealPlan() {
+    DAYS.forEach(day => {
+      if (!state.mealPlan[day]) state.mealPlan[day] = {};
+      state.mealTypes.forEach(mt => {
+        if (!(mt.id in state.mealPlan[day])) state.mealPlan[day][mt.id] = null;
+      });
+    });
+  }
+
+  function saveState() {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  }
+
+  // Per-unit prices (pantry, recipe-builder picker) always show 2 decimals since small
+  // units (e.g. price per gram) need that precision to be meaningful. Aggregate totals
+  // (recipe cost, planner, dashboard) respect the user's "show cents" setting instead,
+  // since RD$ totals are conventionally quoted as whole pesos.
+  function formatCurrency(n, opts) {
+    if (!isFinite(n)) n = 0;
+    const decimals = (opts && opts.totals) ? (state.settings.showCents ? 2 : 0) : 2;
+    return state.settings.currencySymbol + n.toFixed(decimals);
+  }
+
+  // ---------- Tabs ----------
+  document.querySelectorAll(".tab-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+      document.querySelectorAll(".tab-panel").forEach(p => p.classList.remove("active"));
+      btn.classList.add("active");
+      document.getElementById("tab-" + btn.dataset.tab).classList.add("active");
+    });
+  });
+
+  // ---------- Modal helpers ----------
+  const modalOverlay = document.getElementById("modalOverlay");
+  function openModal(modalEl) {
+    document.querySelectorAll(".modal").forEach(m => m.hidden = true);
+    modalEl.hidden = false;
+    modalOverlay.hidden = false;
+  }
+  function closeModals() {
+    modalOverlay.hidden = true;
+    document.querySelectorAll(".modal").forEach(m => m.hidden = true);
+  }
+  modalOverlay.addEventListener("click", (e) => {
+    if (e.target === modalOverlay) closeModals();
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") closeModals();
+  });
+
+  // ============================================================
+  // PANTRY
+  // ============================================================
+  const pantryTbody = document.getElementById("pantryTbody");
+  const pantryEmpty = document.getElementById("pantryEmpty");
+  const pantryTableWrap = document.getElementById("pantryTableWrap");
+  const ingredientModal = document.getElementById("ingredientModal");
+  const ingredientForm = document.getElementById("ingredientForm");
+
+  function ingredientsUsedIn(ingredientId) {
+    return state.recipes.filter(r => r.ingredients.some(ri => ri.ingredientId === ingredientId));
+  }
+
+  function renderPantry() {
+    const hasIngredients = state.ingredients.length > 0;
+    pantryEmpty.hidden = hasIngredients;
+    pantryTableWrap.hidden = !hasIngredients;
+    pantryTbody.innerHTML = "";
+
+    const lang = state.settings.language;
+    document.getElementById("translateAllBtn").hidden = lang === "en" || !hasIngredients;
+
+    state.ingredients
+      .slice()
+      .sort((a, b) => a.name.localeCompare(b.name))
+      .forEach(ing => {
+        const tr = document.createElement("tr");
+
+        const updated = ing.lastUpdated ? new Date(ing.lastUpdated).toLocaleDateString() : "—";
+
+        const priceCell = ing.pricePerUnit > 0
+          ? formatCurrency(ing.pricePerUnit)
+          : `<span class="needs-price">${formatCurrency(ing.pricePerUnit)}${t("needs_price_suffix")}</span>`;
+
+        const displayName = ingredientDisplayName(ing);
+        const nameCell = displayName !== ing.name
+          ? `${escapeHtml(displayName)}<br><span style="font-size:0.75rem;color:var(--text-muted);">${escapeHtml(ing.name)}</span>`
+          : escapeHtml(displayName);
+
+        tr.innerHTML = `
+          <td>${nameCell}</td>
+          <td>${escapeHtml(ing.unit)}</td>
+          <td>${priceCell}</td>
+          <td>${updated}</td>
+          <td>
+            <div class="row-actions">
+              <button class="btn btn-sm" data-action="edit">${t("btn_edit")}</button>
+              <button class="btn btn-sm btn-danger" data-action="delete">${t("btn_delete")}</button>
+              <button class="btn btn-sm" data-action="fetch" disabled title="${t("tooltip_coming_soon")}">${t("btn_fetch_live_price")}</button>
+              ${lang !== "en" ? `<button class="btn btn-sm" data-action="translate" title="${t("btn_translate_tooltip")}">🌐</button>` : ""}
+            </div>
+          </td>
+        `;
+
+        tr.querySelector('[data-action="edit"]').addEventListener("click", () => openIngredientModal(ing.id));
+        tr.querySelector('[data-action="delete"]').addEventListener("click", () => deleteIngredient(ing.id));
+        const translateBtn = tr.querySelector('[data-action="translate"]');
+        if (translateBtn) {
+          translateBtn.addEventListener("click", async () => {
+            translateBtn.disabled = true;
+            translateBtn.textContent = "…";
+            try {
+              const translated = await translateText(ing.name, lang, "en");
+              ing.translations = ing.translations || {};
+              ing.translations[lang] = translated;
+              saveState();
+              renderAll();
+            } catch (err) {
+              translateBtn.disabled = false;
+              translateBtn.textContent = "🌐";
+              translateBtn.title = t("translate_error");
+            }
+          });
+        }
+
+        pantryTbody.appendChild(tr);
+      });
+  }
+
+  document.getElementById("translateAllBtn").addEventListener("click", async () => {
+    const btn = document.getElementById("translateAllBtn");
+    const lang = state.settings.language;
+    const pending = state.ingredients.filter(ing => !(ing.translations && ing.translations[lang]));
+    if (pending.length === 0) return;
+    btn.disabled = true;
+    const originalLabel = btn.textContent;
+    btn.textContent = t("translating");
+    const results = await Promise.allSettled(
+      pending.map(ing => translateText(ing.name, lang, "en").then(text => ({ ing, text })))
+    );
+    results.forEach(r => {
+      if (r.status === "fulfilled") {
+        const { ing, text } = r.value;
+        ing.translations = ing.translations || {};
+        ing.translations[lang] = text;
+      }
+    });
+    saveState();
+    btn.disabled = false;
+    btn.textContent = originalLabel;
+    renderAll();
+  });
+
+  function openIngredientModal(id) {
+    const ing = id ? state.ingredients.find(i => i.id === id) : null;
+    document.getElementById("ingredientModalTitle").textContent = ing ? t("ingredient_edit_title") : t("ingredient_add_title");
+    document.getElementById("ingredientId").value = ing ? ing.id : "";
+    document.getElementById("ingredientName").value = ing ? ing.name : "";
+    document.getElementById("ingredientUnit").value = ing ? ing.unit : "";
+    document.getElementById("ingredientPrice").value = ing ? ing.pricePerUnit : "";
+    document.getElementById("ingredientPriceLabel").textContent = `${t("field_price_per_unit")} (${state.settings.currencySymbol})`;
+    packCalcFields.hidden = true;
+    packPriceInput.value = "";
+    packQtyInput.value = "";
+    packCalcResult.innerHTML = "";
+    openModal(ingredientModal);
+    document.getElementById("ingredientName").focus();
+  }
+
+  document.getElementById("addIngredientBtn").addEventListener("click", () => openIngredientModal(null));
+  document.getElementById("cancelIngredientBtn").addEventListener("click", closeModals);
+
+  // Pack-price calculator: irregular packaging (e.g. produce bags of varying weight
+  // sold at one fixed price) makes a true per-unit price unknowable up front — this
+  // lets the user derive a reasonable average instead of hand-computing it.
+  const togglePackCalcBtn = document.getElementById("togglePackCalcBtn");
+  const packCalcFields = document.getElementById("packCalcFields");
+  const packPriceInput = document.getElementById("packPriceInput");
+  const packQtyInput = document.getElementById("packQtyInput");
+  const packCalcResult = document.getElementById("packCalcResult");
+
+  togglePackCalcBtn.addEventListener("click", () => {
+    packCalcFields.hidden = !packCalcFields.hidden;
+  });
+
+  function updatePackCalc() {
+    const packPrice = parseFloat(packPriceInput.value);
+    const packQty = parseFloat(packQtyInput.value);
+    if (!isFinite(packPrice) || !isFinite(packQty) || packQty <= 0) {
+      packCalcResult.innerHTML = "";
+      return;
+    }
+    const perUnit = packPrice / packQty;
+    packCalcResult.innerHTML = `<span>${t("pack_calc_result", { price: formatCurrency(perUnit) })}</span><button type="button" class="btn btn-sm" id="applyPackCalcBtn">${t("btn_apply")}</button>`;
+    document.getElementById("applyPackCalcBtn").addEventListener("click", () => {
+      document.getElementById("ingredientPrice").value = perUnit;
+    });
+  }
+  packPriceInput.addEventListener("input", updatePackCalc);
+  packQtyInput.addEventListener("input", updatePackCalc);
+
+  ingredientForm.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const id = document.getElementById("ingredientId").value;
+    const name = document.getElementById("ingredientName").value.trim();
+    const unit = document.getElementById("ingredientUnit").value.trim();
+    const price = parseFloat(document.getElementById("ingredientPrice").value);
+    if (!name || !unit || isNaN(price) || price < 0) return;
+
+    if (id) {
+      const ing = state.ingredients.find(i => i.id === id);
+      ing.name = name;
+      ing.unit = unit;
+      ing.pricePerUnit = price;
+      ing.lastUpdated = Date.now();
+    } else {
+      state.ingredients.push({ id: uid(), name, unit, pricePerUnit: price, lastUpdated: Date.now(), translations: {} });
+    }
+    saveState();
+    closeModals();
+    renderAll();
+  });
+
+  function deleteIngredient(id) {
+    const usedIn = ingredientsUsedIn(id);
+    if (usedIn.length > 0) {
+      const names = usedIn.map(r => r.name).join(", ");
+      const ok = confirm(t("confirm_delete_ingredient_used", { names }));
+      if (!ok) return;
+      usedIn.forEach(r => {
+        r.ingredients = r.ingredients.filter(ri => ri.ingredientId !== id);
+      });
+    } else if (!confirm(t("confirm_delete_ingredient"))) {
+      return;
+    }
+    state.ingredients = state.ingredients.filter(i => i.id !== id);
+    delete state.shoppingExtra[id];
+    delete state.shoppingChecked[id];
+    saveState();
+    renderAll();
+  }
+
+  // ============================================================
+  // RECIPES
+  // ============================================================
+  const recipeGrid = document.getElementById("recipeGrid");
+  const recipesEmpty = document.getElementById("recipesEmpty");
+  const recipeModal = document.getElementById("recipeModal");
+  const recipeForm = document.getElementById("recipeForm");
+  const recipeIngList = document.getElementById("recipeIngList");
+  const recipeIngSelect = document.getElementById("recipeIngSelect");
+  const recipeIngQty = document.getElementById("recipeIngQty");
+  const recipeTotalCost = document.getElementById("recipeTotalCost");
+
+  let draftIngredients = []; // [{ ingredientId, quantity }] while editing a recipe
+
+  function recipeCost(recipe) {
+    return recipe.ingredients.reduce((sum, ri) => {
+      const ing = state.ingredients.find(i => i.id === ri.ingredientId);
+      return sum + (ing ? ing.pricePerUnit * ri.quantity : 0);
+    }, 0);
+  }
+
+  function draftCost() {
+    return draftIngredients.reduce((sum, ri) => {
+      const ing = state.ingredients.find(i => i.id === ri.ingredientId);
+      return sum + (ing ? ing.pricePerUnit * ri.quantity : 0);
+    }, 0);
+  }
+
+  function renderRecipes() {
+    const hasRecipes = state.recipes.length > 0;
+    recipesEmpty.hidden = hasRecipes;
+    recipeGrid.innerHTML = "";
+
+    state.recipes.slice().sort((a, b) => a.name.localeCompare(b.name)).forEach(recipe => {
+      const card = document.createElement("div");
+      card.className = "recipe-card";
+
+      const items = recipe.ingredients.map(ri => {
+        const ing = state.ingredients.find(i => i.id === ri.ingredientId);
+        if (!ing) return `<li>${t("removed_ingredient")}</li>`;
+        return `<li>${escapeHtml(ingredientDisplayName(ing))} — ${ri.quantity} ${escapeHtml(ing.unit)}</li>`;
+      }).join("");
+
+      card.innerHTML = `
+        <h3>${escapeHtml(recipe.name)}</h3>
+        <ul>${items || `<li>${t("no_ingredients")}</li>`}</ul>
+        <div class="recipe-cost">${formatCurrency(recipeCost(recipe), { totals: true })}</div>
+        <div class="row-actions">
+          <button class="btn btn-sm" data-action="edit">${t("btn_edit")}</button>
+          <button class="btn btn-sm btn-danger" data-action="delete">${t("btn_delete")}</button>
+        </div>
+      `;
+
+      card.querySelector('[data-action="edit"]').addEventListener("click", () => openRecipeModal(recipe.id));
+      card.querySelector('[data-action="delete"]').addEventListener("click", () => deleteRecipe(recipe.id));
+
+      recipeGrid.appendChild(card);
+    });
+  }
+
+  function populateRecipeIngSelect() {
+    recipeIngSelect.innerHTML = "";
+    if (state.ingredients.length === 0) {
+      const opt = document.createElement("option");
+      opt.textContent = t("ingredients_needed_first");
+      opt.disabled = true;
+      recipeIngSelect.appendChild(opt);
+      recipeIngSelect.disabled = true;
+      recipeIngQty.disabled = true;
+      document.getElementById("recipeIngAddBtn").disabled = true;
+      return;
+    }
+    recipeIngSelect.disabled = false;
+    recipeIngQty.disabled = false;
+    document.getElementById("recipeIngAddBtn").disabled = false;
+    state.ingredients.slice().sort((a, b) => a.name.localeCompare(b.name)).forEach(ing => {
+      const opt = document.createElement("option");
+      opt.value = ing.id;
+      opt.textContent = `${ingredientDisplayName(ing)} (${ing.unit}) — ${formatCurrency(ing.pricePerUnit)}`;
+      recipeIngSelect.appendChild(opt);
+    });
+  }
+
+  function renderDraftIngList() {
+    recipeIngList.innerHTML = "";
+    draftIngredients.forEach((ri, idx) => {
+      const ing = state.ingredients.find(i => i.id === ri.ingredientId);
+      const li = document.createElement("li");
+      const name = ing ? ingredientDisplayName(ing) : t("removed_ingredient");
+      const unit = ing ? ing.unit : "";
+      li.innerHTML = `<span>${escapeHtml(name)} — ${ri.quantity} ${escapeHtml(unit)}</span>`;
+      const removeBtn = document.createElement("button");
+      removeBtn.type = "button";
+      removeBtn.className = "btn btn-sm btn-danger";
+      removeBtn.textContent = t("btn_remove");
+      removeBtn.addEventListener("click", () => {
+        draftIngredients.splice(idx, 1);
+        renderDraftIngList();
+      });
+      li.appendChild(removeBtn);
+      recipeIngList.appendChild(li);
+    });
+    recipeTotalCost.textContent = formatCurrency(draftCost(), { totals: true });
+  }
+
+  document.getElementById("recipeIngAddBtn").addEventListener("click", () => {
+    const ingredientId = recipeIngSelect.value;
+    const quantity = parseFloat(recipeIngQty.value);
+    if (!ingredientId || isNaN(quantity) || quantity <= 0) return;
+    const existing = draftIngredients.find(ri => ri.ingredientId === ingredientId);
+    if (existing) {
+      existing.quantity += quantity;
+    } else {
+      draftIngredients.push({ ingredientId, quantity });
+    }
+    recipeIngQty.value = "";
+    renderDraftIngList();
+  });
+
+  function openRecipeModal(id) {
+    const recipe = id ? state.recipes.find(r => r.id === id) : null;
+    document.getElementById("recipeModalTitle").textContent = recipe ? t("recipe_edit_title") : t("recipe_new_title");
+    document.getElementById("recipeId").value = recipe ? recipe.id : "";
+    document.getElementById("recipeName").value = recipe ? recipe.name : "";
+    draftIngredients = recipe ? recipe.ingredients.map(ri => ({ ...ri })) : [];
+    populateRecipeIngSelect();
+    renderDraftIngList();
+    openModal(recipeModal);
+    document.getElementById("recipeName").focus();
+  }
+
+  document.getElementById("addRecipeBtn").addEventListener("click", () => openRecipeModal(null));
+  document.getElementById("cancelRecipeBtn").addEventListener("click", closeModals);
+
+  recipeForm.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const id = document.getElementById("recipeId").value;
+    const name = document.getElementById("recipeName").value.trim();
+    if (!name) return;
+
+    if (id) {
+      const recipe = state.recipes.find(r => r.id === id);
+      recipe.name = name;
+      recipe.ingredients = draftIngredients.map(ri => ({ ...ri }));
+    } else {
+      state.recipes.push({ id: uid(), name, ingredients: draftIngredients.map(ri => ({ ...ri })) });
+    }
+    saveState();
+    closeModals();
+    renderAll();
+  });
+
+  function deleteRecipe(id) {
+    const usedInPlan = DAYS.some(day => state.mealTypes.some(mt => slotRecipeId(state.mealPlan[day][mt.id]) === id));
+    const msg = usedInPlan
+      ? t("confirm_delete_recipe_used")
+      : t("confirm_delete_recipe");
+    if (!confirm(msg)) return;
+    DAYS.forEach(day => state.mealTypes.forEach(mt => {
+      if (slotRecipeId(state.mealPlan[day][mt.id]) === id) state.mealPlan[day][mt.id] = null;
+    }));
+    state.recipes = state.recipes.filter(r => r.id !== id);
+    saveState();
+    renderAll();
+  }
+
+  // ============================================================
+  // PLANNER + BUDGET DASHBOARD
+  // ============================================================
+  const plannerEmpty = document.getElementById("plannerEmpty");
+  const plannerGridWrap = document.getElementById("plannerGridWrap");
+  const plannerTable = document.getElementById("plannerTable");
+  const slotModal = document.getElementById("slotModal");
+  const mealTypeModal = document.getElementById("mealTypeModal");
+  const slotRecipeSelect = document.getElementById("slotRecipeSelect");
+  const slotQtyInput = document.getElementById("slotQtyInput");
+  const budgetGoalInput = document.getElementById("budgetGoalInput");
+
+  let activeSlot = null; // { day, mealTypeId }
+
+  function dayCost(day) {
+    return state.mealTypes.reduce((sum, mt) => {
+      const slot = state.mealPlan[day][mt.id];
+      const recipeId = slotRecipeId(slot);
+      if (!recipeId) return sum;
+      const recipe = state.recipes.find(r => r.id === recipeId);
+      return sum + (recipe ? recipeCost(recipe) * slotQty(slot) : 0);
+    }, 0);
+  }
+
+  function weeklyCost() {
+    return DAYS.reduce((sum, day) => sum + dayCost(day), 0);
+  }
+
+  function renderPlanner() {
+    const hasRecipes = state.recipes.length > 0;
+    plannerEmpty.hidden = hasRecipes;
+    plannerGridWrap.hidden = !hasRecipes;
+
+    let html = `<thead><tr><th class="meal-col">${t("th_meal")}</th>`;
+    DAYS.forEach(day => { html += `<th>${dayLabel(day)}</th>`; });
+    html += "</tr></thead><tbody>";
+
+    sortedMealTypes().forEach(mt => {
+      const removeBtn = !mt.labelKey
+        ? ` <button type="button" class="meal-remove-btn" data-mealtype="${mt.id}" title="${t("remove_meal_type")}">✕</button>`
+        : "";
+      html += `<tr><td class="meal-col">${escapeHtml(mealTypeLabel(mt))}${removeBtn}</td>`;
+      DAYS.forEach(day => {
+        const slot = state.mealPlan[day][mt.id];
+        const recipeId = slotRecipeId(slot);
+        const recipe = recipeId ? state.recipes.find(r => r.id === recipeId) : null;
+        html += `<td><button class="slot-btn${recipe ? " filled" : ""}" data-day="${day}" data-mealtype="${mt.id}">`;
+        if (recipe) {
+          const qty = slotQty(slot);
+          const qtyLabel = qty > 1 ? ` ×${qty}` : "";
+          html += `<span class="slot-recipe">${escapeHtml(recipe.name)}${qtyLabel}</span><span class="slot-cost">${formatCurrency(recipeCost(recipe) * qty, { totals: true })}</span>`;
+        } else {
+          html += t("add_slot");
+        }
+        html += "</button></td>";
+      });
+      html += "</tr>";
+    });
+
+    html += `<tr class="day-cost-row"><td class="meal-col">${t("day_total")}</td>`;
+    DAYS.forEach(day => { html += `<td>${formatCurrency(dayCost(day), { totals: true })}</td>`; });
+    html += "</tr>";
+
+    html += "</tbody>";
+    plannerTable.innerHTML = html;
+
+    plannerTable.querySelectorAll(".slot-btn").forEach(btn => {
+      btn.addEventListener("click", () => openSlotModal(btn.dataset.day, btn.dataset.mealtype));
+    });
+    plannerTable.querySelectorAll(".meal-remove-btn").forEach(btn => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        removeMealType(btn.dataset.mealtype);
+      });
+    });
+  }
+
+  function openSlotModal(day, mealTypeId) {
+    if (state.recipes.length === 0) return;
+    activeSlot = { day, mealTypeId };
+    document.getElementById("slotModalTitle").textContent = `${mealTypeLabel(findMealType(mealTypeId))} — ${dayLabel(day)}`;
+    slotRecipeSelect.innerHTML = "";
+    const noneOpt = document.createElement("option");
+    noneOpt.value = "";
+    noneOpt.textContent = t("select_a_recipe");
+    slotRecipeSelect.appendChild(noneOpt);
+    state.recipes.slice().sort((a, b) => a.name.localeCompare(b.name)).forEach(recipe => {
+      const opt = document.createElement("option");
+      opt.value = recipe.id;
+      opt.textContent = `${recipe.name} — ${formatCurrency(recipeCost(recipe), { totals: true })}`;
+      slotRecipeSelect.appendChild(opt);
+    });
+    const slot = state.mealPlan[day][mealTypeId];
+    slotRecipeSelect.value = slotRecipeId(slot) || "";
+    slotQtyInput.value = slotQty(slot);
+    openModal(slotModal);
+  }
+
+  function removeMealType(id) {
+    if (!confirm(t("confirm_remove_meal_type"))) return;
+    state.mealTypes = state.mealTypes.filter(mt => mt.id !== id);
+    DAYS.forEach(day => { delete state.mealPlan[day][id]; });
+    saveState();
+    renderAll();
+  }
+
+  document.getElementById("addMealTypeBtn").addEventListener("click", () => {
+    document.getElementById("mealTypeName").value = "";
+    const positionSelect = document.getElementById("mealTypePosition");
+    positionSelect.innerHTML = "";
+    const sorted = sortedMealTypes();
+    const firstOpt = document.createElement("option");
+    firstOpt.value = "before:" + sorted[0].id;
+    firstOpt.textContent = t("position_before", { name: mealTypeLabel(sorted[0]) });
+    positionSelect.appendChild(firstOpt);
+    sorted.forEach(mt => {
+      const opt = document.createElement("option");
+      opt.value = "after:" + mt.id;
+      opt.textContent = t("position_after", { name: mealTypeLabel(mt) });
+      positionSelect.appendChild(opt);
+    });
+    positionSelect.value = "after:" + sorted[sorted.length - 1].id;
+    openModal(mealTypeModal);
+    document.getElementById("mealTypeName").focus();
+  });
+
+  document.getElementById("cancelMealTypeBtn").addEventListener("click", closeModals);
+
+  document.getElementById("saveMealTypeBtn").addEventListener("click", () => {
+    const name = document.getElementById("mealTypeName").value.trim();
+    if (!name) return;
+    const [mode, refId] = document.getElementById("mealTypePosition").value.split(":");
+    const sorted = sortedMealTypes();
+    const refIdx = sorted.findIndex(mt => mt.id === refId);
+    let order;
+    if (mode === "before") {
+      order = sorted[refIdx].order - 10;
+    } else if (refIdx === sorted.length - 1) {
+      order = sorted[refIdx].order + 10;
+    } else {
+      order = (sorted[refIdx].order + sorted[refIdx + 1].order) / 2;
+    }
+    state.mealTypes.push({ id: uid(), name, order });
+    normalizeMealPlan();
+    saveState();
+    closeModals();
+    renderAll();
+  });
+
+  document.getElementById("cancelSlotBtn").addEventListener("click", closeModals);
+
+  document.getElementById("slotSaveBtn").addEventListener("click", () => {
+    if (!activeSlot) return;
+    const recipeId = slotRecipeSelect.value || null;
+    if (!recipeId) {
+      state.mealPlan[activeSlot.day][activeSlot.mealTypeId] = null;
+    } else {
+      let qty = parseInt(slotQtyInput.value, 10);
+      if (isNaN(qty) || qty < 1) qty = 1;
+      state.mealPlan[activeSlot.day][activeSlot.mealTypeId] = { recipeId, qty };
+    }
+    saveState();
+    closeModals();
+    renderAll();
+  });
+
+  document.getElementById("slotClearBtn").addEventListener("click", () => {
+    if (!activeSlot) return;
+    state.mealPlan[activeSlot.day][activeSlot.mealTypeId] = null;
+    saveState();
+    closeModals();
+    renderAll();
+  });
+
+  function renderDashboard() {
+    const total = weeklyCost();
+    const perDay = total / 7;
+    const goal = state.budgetGoal || 0;
+    const remaining = goal - total;
+
+    document.getElementById("statWeeklyCost").textContent = formatCurrency(total, { totals: true });
+    document.getElementById("statDailyCost").textContent = formatCurrency(perDay, { totals: true });
+
+    const remainingEl = document.getElementById("statBudgetRemaining");
+    const card = document.getElementById("statBudgetCard");
+    card.classList.remove("under", "over");
+    if (goal <= 0) {
+      remainingEl.textContent = t("set_a_goal");
+      remainingEl.parentElement.querySelector(".label").textContent = t("stat_budget_remaining_label");
+    } else if (remaining >= 0) {
+      card.classList.add("under");
+      remainingEl.textContent = formatCurrency(remaining, { totals: true }) + t("left_suffix");
+    } else {
+      card.classList.add("over");
+      remainingEl.textContent = formatCurrency(Math.abs(remaining), { totals: true }) + t("over_suffix");
+    }
+
+    if (document.activeElement !== budgetGoalInput) {
+      budgetGoalInput.value = state.budgetGoal || "";
+    }
+  }
+
+  budgetGoalInput.addEventListener("input", () => {
+    const val = parseFloat(budgetGoalInput.value);
+    state.budgetGoal = isNaN(val) || val < 0 ? 0 : val;
+    saveState();
+    renderDashboard();
+  });
+
+  // ============================================================
+  // SHOPPING LIST — combines two sources: quantities aggregated across every
+  // recipe assigned in the weekly planner (a recipe in two slots counts twice),
+  // plus manual "extra" items the user ticks straight from the pantry
+  // (state.shoppingExtra) for staples not tied to a planned meal.
+  // ============================================================
+  const shoppingEmpty = document.getElementById("shoppingEmpty");
+  const shoppingSummary = document.getElementById("shoppingSummary");
+  const shoppingListEl = document.getElementById("shoppingListEl");
+
+  function plannedTotals() {
+    const totals = {};
+    DAYS.forEach(day => {
+      state.mealTypes.forEach(mt => {
+        const slot = state.mealPlan[day][mt.id];
+        const recipeId = slotRecipeId(slot);
+        if (!recipeId) return;
+        const recipe = state.recipes.find(r => r.id === recipeId);
+        if (!recipe) return;
+        const qty = slotQty(slot);
+        recipe.ingredients.forEach(ri => {
+          totals[ri.ingredientId] = (totals[ri.ingredientId] || 0) + ri.quantity * qty;
+        });
+      });
+    });
+    return totals;
+  }
+
+  function computeShoppingList() {
+    const planned = plannedTotals();
+    const ids = new Set([...Object.keys(planned), ...Object.keys(state.shoppingExtra)]);
+    const result = [];
+    ids.forEach(id => {
+      const ingredient = state.ingredients.find(i => i.id === id);
+      if (!ingredient) return;
+      const plannedQty = planned[id] || 0;
+      const extraQty = state.shoppingExtra[id] || 0;
+      const quantity = plannedQty + extraQty;
+      if (quantity <= 0) return;
+      // "manual" (fully user-added → editable qty + removable) only when the
+      // planner contributes nothing; a planned item stays read-only.
+      result.push({ ingredientId: id, ingredient, plannedQty, extraQty, quantity, manual: plannedQty === 0 });
+    });
+    return result;
+  }
+
+  function renderPantryPicker() {
+    const picker = document.getElementById("pantryPicker");
+    const hasPantry = state.ingredients.length > 0;
+    picker.hidden = !hasPantry;
+    if (!hasPantry) return;
+
+    const planned = plannedTotals();
+    const listEl = document.getElementById("pantryPickerList");
+    listEl.innerHTML = "";
+    state.ingredients.slice().sort((a, b) => ingredientDisplayName(a).localeCompare(ingredientDisplayName(b))).forEach(ing => {
+      const onPlan = (planned[ing.id] || 0) > 0;
+      const inExtra = ing.id in state.shoppingExtra;
+      const row = document.createElement(onPlan ? "div" : "label");
+      row.className = "pantry-pick-item" + (onPlan ? " on-plan" : "");
+      const meta = onPlan
+        ? t("from_plan_tag")
+        : (ing.pricePerUnit > 0 ? `${formatCurrency(ing.pricePerUnit)}/${escapeHtml(ing.unit)}` : escapeHtml(ing.unit));
+      row.innerHTML = `
+        <input type="checkbox" ${(onPlan || inExtra) ? "checked" : ""} ${onPlan ? "disabled" : ""}>
+        <span class="pantry-pick-name">${escapeHtml(ingredientDisplayName(ing))}</span>
+        <span class="pantry-pick-meta">${meta}</span>
+      `;
+      if (!onPlan) {
+        row.querySelector("input").addEventListener("change", (e) => {
+          if (e.target.checked) {
+            state.shoppingExtra[ing.id] = 1;
+          } else {
+            delete state.shoppingExtra[ing.id];
+            delete state.shoppingChecked[ing.id];
+          }
+          saveState();
+          renderShoppingList();
+        });
+      }
+      listEl.appendChild(row);
+    });
+  }
+
+  function renderShoppingList() {
+    renderPantryPicker();
+
+    const items = computeShoppingList();
+    const hasItems = items.length > 0;
+    const hasPantry = state.ingredients.length > 0;
+
+    shoppingSummary.hidden = !hasItems;
+    shoppingEmpty.hidden = hasItems;
+    shoppingEmpty.textContent = hasPantry ? t("shopping_empty") : t("shopping_empty_no_pantry");
+    document.getElementById("shareShoppingBtn").disabled = !hasItems;
+    shoppingListEl.innerHTML = "";
+
+    if (hasItems) {
+      items.sort((a, b) => ingredientDisplayName(a.ingredient).localeCompare(ingredientDisplayName(b.ingredient)));
+
+      let total = 0;
+      let checkedCount = 0;
+
+      items.forEach(item => {
+        const checked = !!state.shoppingChecked[item.ingredientId];
+        if (checked) checkedCount++;
+        const cost = item.ingredient.pricePerUnit * item.quantity;
+        total += cost;
+
+        const li = document.createElement("li");
+        li.className = "shopping-item" + (checked ? " checked" : "");
+
+        const tag = item.manual ? "" : `<span class="shopping-tag">${t("from_plan_tag")}</span>`;
+        const qtyCell = item.manual
+          ? `<input type="number" class="shopping-qty-input" min="0" step="any" value="${item.extraQty}"><span class="shopping-qty">${escapeHtml(item.ingredient.unit)}</span>`
+          : `<span class="shopping-qty">${item.quantity} ${escapeHtml(item.ingredient.unit)}</span>`;
+        const removeBtn = item.manual ? `<button type="button" class="shopping-remove" title="${t("remove_item")}">✕</button>` : "";
+
+        li.innerHTML = `
+          <label class="shopping-main">
+            <input type="checkbox" class="shopping-check" ${checked ? "checked" : ""}>
+            <span class="shopping-name">${escapeHtml(ingredientDisplayName(item.ingredient))}</span>
+            ${tag}
+          </label>
+          ${qtyCell}
+          <span class="shopping-cost">${formatCurrency(cost, { totals: true })}</span>
+          ${removeBtn}
+        `;
+
+        li.querySelector(".shopping-check").addEventListener("change", (e) => {
+          if (e.target.checked) state.shoppingChecked[item.ingredientId] = true;
+          else delete state.shoppingChecked[item.ingredientId];
+          saveState();
+          renderShoppingList();
+        });
+
+        if (item.manual) {
+          li.querySelector(".shopping-qty-input").addEventListener("change", (e) => {
+            const val = parseFloat(e.target.value);
+            if (isNaN(val) || val <= 0) {
+              delete state.shoppingExtra[item.ingredientId];
+              delete state.shoppingChecked[item.ingredientId];
+            } else {
+              state.shoppingExtra[item.ingredientId] = val;
+            }
+            saveState();
+            renderShoppingList();
+          });
+          li.querySelector(".shopping-remove").addEventListener("click", () => {
+            delete state.shoppingExtra[item.ingredientId];
+            delete state.shoppingChecked[item.ingredientId];
+            saveState();
+            renderShoppingList();
+          });
+        }
+
+        shoppingListEl.appendChild(li);
+      });
+
+      document.getElementById("shoppingTotalValue").textContent = formatCurrency(total, { totals: true });
+      document.getElementById("shoppingProgress").textContent = t("shopping_progress", { checked: checkedCount, total: items.length });
+    }
+  }
+
+  document.getElementById("togglePantryPickerBtn").addEventListener("click", () => {
+    const panel = document.getElementById("pantryPickerPanel");
+    panel.hidden = !panel.hidden;
+  });
+
+  document.getElementById("clearCheckedBtn").addEventListener("click", () => {
+    state.shoppingChecked = {};
+    saveState();
+    renderShoppingList();
+  });
+
+  function buildShoppingListText() {
+    const items = computeShoppingList().sort((a, b) => ingredientDisplayName(a.ingredient).localeCompare(ingredientDisplayName(b.ingredient)));
+    const lines = [t("share_list_title"), ""];
+    let total = 0;
+    items.forEach(item => {
+      const cost = item.ingredient.pricePerUnit * item.quantity;
+      total += cost;
+      const checkMark = state.shoppingChecked[item.ingredientId] ? "☑" : "▢";
+      lines.push(`${checkMark} ${ingredientDisplayName(item.ingredient)} — ${item.quantity} ${item.ingredient.unit} — ${formatCurrency(cost, { totals: true })}`);
+    });
+    lines.push("");
+    lines.push(`${t("shopping_total_label")}: ${formatCurrency(total, { totals: true })}`);
+    return lines.join("\n");
+  }
+
+  document.getElementById("shareShoppingBtn").addEventListener("click", async () => {
+    const btn = document.getElementById("shareShoppingBtn");
+    const text = buildShoppingListText();
+    // navigator.share opens the OS share sheet (WhatsApp, Messenger, etc.) on
+    // mobile / the Android container. Desktop browsers without it fall back to
+    // copying the list so the user can paste it into any chat app.
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: t("share_list_title"), text });
+      } catch (e) {
+        /* user dismissed the share sheet — nothing to do */
+      }
+      return;
+    }
+    const original = btn.textContent;
+    try {
+      await navigator.clipboard.writeText(text);
+      btn.textContent = t("share_copied");
+      setTimeout(() => { btn.textContent = original; }, 2000);
+    } catch (e) {
+      alert(text);
+    }
+  });
+
+  // ============================================================
+  // WEEKLY REPORT — a single plain-text block doubles as the on-screen
+  // report, the print output, and the clipboard copy (no separate
+  // HTML-vs-text rendering to keep in sync).
+  // ============================================================
+  const reportModal = document.getElementById("reportModal");
+  const reportText = document.getElementById("reportText");
+
+  function buildReportText() {
+    const lines = [];
+    lines.push(t("report_header"));
+    lines.push(t("report_generated", { date: new Date().toLocaleDateString() }));
+    lines.push("");
+
+    lines.push(t("report_budget_summary"));
+    lines.push(`  ${t("stat_weekly_cost_label")}: ${formatCurrency(weeklyCost(), { totals: true })}`);
+    const goal = state.budgetGoal || 0;
+    if (goal > 0) {
+      lines.push(`  ${t("stat_budget_goal_label")}: ${formatCurrency(goal, { totals: true })}`);
+      const remaining = goal - weeklyCost();
+      lines.push(remaining >= 0
+        ? `  ${t("stat_budget_remaining_label")}: ${formatCurrency(remaining, { totals: true })}${t("left_suffix")}`
+        : `  ${t("stat_budget_remaining_label")}: ${formatCurrency(Math.abs(remaining), { totals: true })}${t("over_suffix")}`);
+    }
+    lines.push("");
+
+    lines.push(t("report_weekly_plan"));
+    const mts = sortedMealTypes();
+    DAYS.forEach(day => {
+      lines.push(`  ${dayLabel(day)}`);
+      mts.forEach(mt => {
+        const slot = state.mealPlan[day][mt.id];
+        const recipeId = slotRecipeId(slot);
+        const recipe = recipeId ? state.recipes.find(r => r.id === recipeId) : null;
+        if (recipe) {
+          const qty = slotQty(slot);
+          const qtyLabel = qty > 1 ? ` ×${qty}` : "";
+          lines.push(`    ${mealTypeLabel(mt)}: ${recipe.name}${qtyLabel} — ${formatCurrency(recipeCost(recipe) * qty, { totals: true })}`);
+        } else {
+          lines.push(`    ${mealTypeLabel(mt)}: —`);
+        }
+      });
+      lines.push(`    ${t("day_total")}: ${formatCurrency(dayCost(day), { totals: true })}`);
+    });
+    lines.push("");
+
+    lines.push(t("report_shopping_list"));
+    const items = computeShoppingList().sort((a, b) => ingredientDisplayName(a.ingredient).localeCompare(ingredientDisplayName(b.ingredient)));
+    if (items.length === 0) {
+      lines.push(`  ${t("shopping_empty")}`);
+    } else {
+      let total = 0;
+      items.forEach(item => {
+        const cost = item.ingredient.pricePerUnit * item.quantity;
+        total += cost;
+        lines.push(`  ${ingredientDisplayName(item.ingredient)} — ${item.quantity} ${item.ingredient.unit} — ${formatCurrency(cost, { totals: true })}`);
+      });
+      lines.push(`  ${t("shopping_total_label")}: ${formatCurrency(total, { totals: true })}`);
+    }
+
+    return lines.join("\n");
+  }
+
+  document.getElementById("reportBtn").addEventListener("click", () => {
+    reportText.textContent = buildReportText();
+    openModal(reportModal);
+  });
+  document.getElementById("closeReportBtn").addEventListener("click", closeModals);
+  document.getElementById("printReportBtn").addEventListener("click", () => window.print());
+  document.getElementById("copyReportBtn").addEventListener("click", () => {
+    const btn = document.getElementById("copyReportBtn");
+    const original = btn.textContent;
+    navigator.clipboard.writeText(reportText.textContent).then(() => {
+      btn.textContent = t("copied_feedback");
+      setTimeout(() => { btn.textContent = original; }, 1500);
+    }).catch(() => {
+      alert(t("copy_error"));
+    });
+  });
+
+  // ============================================================
+  // SETTINGS
+  // ============================================================
+  const settingsModal = document.getElementById("settingsModal");
+  const currencySymbolInput = document.getElementById("currencySymbolInput");
+  const showCentsInput = document.getElementById("showCentsInput");
+  const languageSelect = document.getElementById("languageSelect");
+
+  document.getElementById("settingsBtn").addEventListener("click", () => {
+    currencySymbolInput.value = state.settings.currencySymbol;
+    showCentsInput.checked = state.settings.showCents;
+    languageSelect.value = state.settings.language;
+    openModal(settingsModal);
+  });
+
+  document.getElementById("closeSettingsBtn").addEventListener("click", () => {
+    state.settings.currencySymbol = currencySymbolInput.value.trim() || "RD$";
+    state.settings.showCents = showCentsInput.checked;
+    state.settings.language = languageSelect.value;
+    saveState();
+    closeModals();
+    renderAll();
+  });
+
+  document.getElementById("exportDataBtn").addEventListener("click", () => {
+    const blob = new Blob([JSON.stringify(state, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = Object.assign(document.createElement("a"), {
+      href: url,
+      download: `mealbudgeter-${new Date().toISOString().slice(0, 10)}.json`
+    });
+    a.click();
+    URL.revokeObjectURL(url);
+  });
+
+  document.getElementById("importDataFile").addEventListener("change", (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      let data;
+      try {
+        data = JSON.parse(ev.target.result);
+      } catch (err) {
+        alert(t("import_invalid_file"));
+        e.target.value = "";
+        return;
+      }
+      if (!data || !Array.isArray(data.ingredients) || !Array.isArray(data.recipes)) {
+        alert(t("import_invalid_file"));
+        e.target.value = "";
+        return;
+      }
+      if (!confirm(t("confirm_import_overwrite"))) {
+        e.target.value = "";
+        return;
+      }
+      // Write raw, then re-run loadState()'s migrations/defaults on it — a backup
+      // from an older app version might predate mealTypes, shoppingChecked, etc.
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+      state = loadState();
+      saveState();
+      closeModals();
+      renderAll();
+      alert(t("import_success"));
+      e.target.value = "";
+    };
+    reader.readAsText(file);
+  });
+
+  // ============================================================
+  // RECIPE IMPORT — TheMealDB (public, CORS-enabled, no key needed for search)
+  // ============================================================
+  const MEALDB_SEARCH_URL = "https://www.themealdb.com/api/json/v1/1/search.php?s=";
+
+  const importSearchModal = document.getElementById("importSearchModal");
+  const importReviewModal = document.getElementById("importReviewModal");
+  const importSearchInput = document.getElementById("importSearchInput");
+  const importSearchStatus = document.getElementById("importSearchStatus");
+  const importResultsList = document.getElementById("importResultsList");
+  const importRecipeName = document.getElementById("importRecipeName");
+  const importIngredientsTbody = document.getElementById("importIngredientsTbody");
+  const importHint = document.getElementById("importHint");
+
+  let importDraftRows = []; // [{ name, quantity, unit, matchId }] matchId is "__new__" or an ingredient id
+
+  // TheMealDB measures are free text like "2 cups", "1 1/2 tsp", "400g", "Pinch", "to taste".
+  // Pull a leading number (supports simple and mixed fractions) off the front; whatever's
+  // left becomes the unit. No leading number just means "1 <whole string>" (e.g. "to taste").
+  function parseMeasure(raw) {
+    const str = (raw || "").trim();
+    if (!str) return { quantity: 1, unit: "unit" };
+
+    const toDecimal = (token) => {
+      if (token.indexOf("/") !== -1) {
+        const parts = token.split("/");
+        const num = parseFloat(parts[0]);
+        const den = parseFloat(parts[1]);
+        return den ? num / den : NaN;
+      }
+      return parseFloat(token);
+    };
+
+    const match = str.match(/^(\d+\s+\d+\/\d+|\d+\/\d+|\d+(\.\d+)?)/);
+    if (!match) return { quantity: 1, unit: str };
+
+    const qtyToken = match[0];
+    let quantity;
+    if (qtyToken.indexOf(" ") !== -1) {
+      const bits = qtyToken.split(" ");
+      quantity = parseFloat(bits[0]) + toDecimal(bits[1]);
+    } else {
+      quantity = toDecimal(qtyToken);
+    }
+    const unit = str.slice(qtyToken.length).trim();
+    return { quantity: isFinite(quantity) && quantity > 0 ? quantity : 1, unit: unit || "unit" };
+  }
+
+  function extractMealIngredients(meal) {
+    const rows = [];
+    for (let i = 1; i <= 20; i++) {
+      const name = (meal["strIngredient" + i] || "").trim();
+      const measure = (meal["strMeasure" + i] || "").trim();
+      if (!name) continue;
+      const parsed = parseMeasure(measure);
+      rows.push({ name, quantity: parsed.quantity, unit: parsed.unit });
+    }
+    return rows;
+  }
+
+  document.getElementById("importRecipeBtn").addEventListener("click", () => {
+    importSearchInput.value = "";
+    importSearchStatus.textContent = "";
+    importResultsList.innerHTML = "";
+    openModal(importSearchModal);
+    importSearchInput.focus();
+  });
+  document.getElementById("cancelImportSearchBtn").addEventListener("click", closeModals);
+
+  async function runMealSearch() {
+    const query = importSearchInput.value.trim();
+    if (!query) return;
+    importSearchStatus.textContent = t("searching");
+    importResultsList.innerHTML = "";
+    try {
+      const res = await fetch(MEALDB_SEARCH_URL + encodeURIComponent(query));
+      if (!res.ok) throw new Error("Request failed");
+      const data = await res.json();
+      const meals = data.meals || [];
+      if (meals.length === 0) {
+        importSearchStatus.textContent = t("no_results", { query });
+        return;
+      }
+      importSearchStatus.textContent = t(meals.length === 1 ? "result_singular" : "result_plural", { n: meals.length });
+      meals.forEach(meal => {
+        const li = document.createElement("li");
+        li.innerHTML = `
+          <img src="${meal.strMealThumb}" alt="">
+          <span>${escapeHtml(meal.strMeal)}${meal.strArea ? ` <span style="color:var(--text-muted);font-size:0.8rem;">(${escapeHtml(meal.strArea)})</span>` : ""}</span>
+        `;
+        li.addEventListener("click", () => openImportReview(meal));
+        importResultsList.appendChild(li);
+      });
+    } catch (err) {
+      importSearchStatus.textContent = t("fetch_error");
+    }
+  }
+
+  document.getElementById("importSearchBtn").addEventListener("click", runMealSearch);
+  importSearchInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") { e.preventDefault(); runMealSearch(); }
+  });
+
+  function openImportReview(meal) {
+    importRecipeName.value = meal.strMeal;
+    importDraftRows = extractMealIngredients(meal).map(row => {
+      const existing = state.ingredients.find(i => i.name.trim().toLowerCase() === row.name.trim().toLowerCase());
+      return Object.assign({}, row, { matchId: existing ? existing.id : "__new__" });
+    });
+    renderImportReviewRows();
+    openModal(importReviewModal);
+  }
+
+  function renderImportReviewRows() {
+    importIngredientsTbody.innerHTML = "";
+    let newCount = 0;
+
+    importDraftRows.forEach((row, idx) => {
+      const tr = document.createElement("tr");
+      const matchedIng = row.matchId !== "__new__" ? state.ingredients.find(i => i.id === row.matchId) : null;
+      const mismatch = matchedIng && matchedIng.unit.trim().toLowerCase() !== row.unit.trim().toLowerCase();
+      if (!matchedIng) newCount++;
+
+      let optionsHtml = `<option value="__new__"${row.matchId === "__new__" ? " selected" : ""}>${t("create_new_prefix", { name: escapeHtml(row.name) })}</option>`;
+      state.ingredients.slice().sort((a, b) => a.name.localeCompare(b.name)).forEach(ing => {
+        optionsHtml += `<option value="${ing.id}"${row.matchId === ing.id ? " selected" : ""}>${escapeHtml(ingredientDisplayName(ing))} (${escapeHtml(ing.unit)})</option>`;
+      });
+
+      tr.innerHTML = `
+        <td>${escapeHtml(row.name)}</td>
+        <td><input type="number" class="import-row-input" data-idx="${idx}" data-field="quantity" value="${row.quantity}" min="0" step="any" style="width:70px;"></td>
+        <td><input type="text" class="import-row-input" data-idx="${idx}" data-field="unit" value="${escapeHtml(row.unit)}"${matchedIng ? " disabled" : ""} style="width:90px;"></td>
+        <td>
+          <select class="import-row-select" data-idx="${idx}">${optionsHtml}</select>
+          ${mismatch ? `<span class="mismatch-warning">${t("mismatch_warning", { unit: escapeHtml(matchedIng.unit) })}</span>` : ""}
+        </td>
+      `;
+      importIngredientsTbody.appendChild(tr);
+    });
+
+    importIngredientsTbody.querySelectorAll("select.import-row-select").forEach(sel => {
+      sel.addEventListener("change", (e) => {
+        const idx = parseInt(e.target.dataset.idx, 10);
+        importDraftRows[idx].matchId = e.target.value;
+        if (e.target.value !== "__new__") {
+          const ing = state.ingredients.find(i => i.id === e.target.value);
+          if (ing) importDraftRows[idx].unit = ing.unit;
+        }
+        renderImportReviewRows();
+      });
+    });
+    importIngredientsTbody.querySelectorAll("input.import-row-input").forEach(input => {
+      input.addEventListener("input", (e) => {
+        const idx = parseInt(e.target.dataset.idx, 10);
+        const field = e.target.dataset.field;
+        if (field === "quantity") {
+          importDraftRows[idx].quantity = parseFloat(e.target.value) || 0;
+        } else {
+          importDraftRows[idx].unit = e.target.value;
+        }
+      });
+    });
+
+    importHint.textContent = newCount > 0
+      ? t(newCount === 1 ? "new_ingredients_hint_singular" : "new_ingredients_hint_plural", { n: newCount })
+      : t("all_matched");
+  }
+
+  document.getElementById("backToSearchBtn").addEventListener("click", () => openModal(importSearchModal));
+  document.getElementById("cancelImportReviewBtn").addEventListener("click", closeModals);
+
+  document.getElementById("confirmImportBtn").addEventListener("click", () => {
+    const name = importRecipeName.value.trim();
+    if (!name || importDraftRows.length === 0) return;
+
+    const recipeIngredients = importDraftRows.map(row => {
+      let ingredientId = row.matchId;
+      if (ingredientId === "__new__") {
+        const newIng = { id: uid(), name: row.name, unit: row.unit || "unit", pricePerUnit: 0, lastUpdated: Date.now(), translations: {} };
+        state.ingredients.push(newIng);
+        ingredientId = newIng.id;
+      }
+      return { ingredientId, quantity: row.quantity > 0 ? row.quantity : 1 };
+    });
+
+    state.recipes.push({ id: uid(), name, ingredients: recipeIngredients });
+    saveState();
+    closeModals();
+    renderAll();
+  });
+
+  // ============================================================
+  // Shared
+  // ============================================================
+  function escapeHtml(str) {
+    const div = document.createElement("div");
+    div.textContent = str == null ? "" : String(str);
+    return div.innerHTML;
+  }
+
+  function renderAll() {
+    applyStaticTranslations();
+    renderPantry();
+    renderRecipes();
+    renderPlanner();
+    renderDashboard();
+    renderShoppingList();
+  }
+
+  renderAll();
+})();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,76 @@
+{
+  "_readme": "Session/project handoff for a fresh chat agent with zero prior context on Meal Budgeter. This is the FIRST file to read. It answers 'what is this, where do things live, what's already decided, what's next' at a project level. For a line-by-line map of the actual code (functions, line numbers, modals, state shape), read mealbudgeter/app-map.json next, before making any edits — it exists specifically so you don't have to re-read the whole ~2670-line file.",
+
+  "project": {
+    "name": "Meal Budgeter",
+    "whatItIs": "A single-file HTML meal planner + budgeter web app: pantry with per-unit pricing, recipe builder, a weekly meal planner, an auto-generated shopping list, a printable/shareable weekly report, JSON backup export/import, and bilingual (English/Spanish) UI. Built iteratively over one long conversation, entirely in HTML/CSS/vanilla JS with localStorage — no build step, no framework.",
+    "currentVersion": "a1.16 (the user's own versioning scheme, expressed as the filename of the .zip they build and install into their Android host app — see mealbudgeter-android/mealbudgeter_a1.16.zip)",
+    "user": "Dominican Republic based; currency is RD$ (Dominican Peso); bilingual household (needs EN/ES); tests on a real Android phone via the host app below, not just a desktop browser.",
+    "sourceOfTruth": "mealbudgeter/mealbudgeter.html — edit ONLY this file. Everything else (the android www/index.html copy, the .zip builds) is derived from it."
+  },
+
+  "fileLayout": {
+    "mealbudgeter/mealbudgeter.html": "THE source file. ~2670 lines, single self-contained HTML document (inline <style>, inline <script>).",
+    "mealbudgeter/app-map.json": "Code-structure map: every function with its current line number, all modal/element IDs, the state schema, i18n key prefixes, and hard conventions. Read this before editing the HTML — it's kept in sync with the source and is much cheaper to read than the whole file. Regenerate it (see its own instructions) after any edit that shifts line numbers materially.",
+    "mealbudgeter/icon.png": "App icon, tracked in git, used both by the dev-preview and as the root icon.png the html-runner-android import flow looks for in the zip.",
+    "mealbudgeter-android/www/index.html": "Byte-identical copy of mealbudgeter.html, used as the Android port's webDir entry. MUST be re-synced (`cp mealbudgeter/mealbudgeter.html mealbudgeter-android/www/index.html`) after every edit to the source — verify with `diff -q` before considering a change done.",
+    "mealbudgeter-android/www/icon.png": "Tracked copy of the icon inside the www/ folder (the actual Capacitor webDir).",
+    "mealbudgeter-android/icon.png": "Untracked, sits at the mealbudgeter-android/ root — used when the user packages the app into a .zip for the host app's import flow (root icon.png, not the www/ one). Don't delete it during cleanup; it's not stale, it's a packaging input.",
+    "mealbudgeter-android/mealbudgeter_a1.16.zip": "The current release build, kept as the one reference artifact. Untracked (never commit .zip files — established convention). Superseded versions (a1.1, a1.12–a1.15, and stale loose index.html staging copies in both folders) were deleted in the cleanup that produced this handoff — expect new ones to accumulate again as the user rebuilds; that's normal, not a bug to fix.",
+    "html-runner-android/map.json": "NOT part of this project, but essential context — it's the map.json for the Android host app that runs Meal Budgeter (and other mini-apps). Read the 'hostEnvironment' entries below before touching anything related to file downloads, sharing, or native capability."
+  },
+
+  "hostEnvironment": {
+    "name": "html-runner-android",
+    "whatItIs": "A Capacitor 6 WebView launcher (see html-runner-android/map.json for its own full map) that lets the user upload .zip mini-apps ('vapor apps') via a file picker, unzips them into app-private storage, and opens one by navigating its single WebView to the app's index.html via Capacitor.convertFileSrc (so the origin stays https://localhost).",
+    "criticalConstraintForMeaBudgeter": "When Meal Budgeter runs inside this host, there is NO browser chrome and NO download manager, and the Capacitor JS bridge is NOT injected into the mini-app's page (the bridge only attaches to the launcher's own index.html, not pages it navigates into afterward). Practical effect: `<a download>` silently does nothing, `window.open` has no useful target, and there's no window.Capacitor / native plugin access inside mealbudgeter.html.",
+    "establishedPattern": "Anything that needs to get data OUT of the app (export backup, shopping-list share) must use navigator.share as the primary path (works because it's a standard web platform API, not a Capacitor plugin) with a copy-to-clipboard fallback that's guaranteed to work with zero platform APIs. See the exportModal implementation in mealbudgeter.html (and mirrored in the shopping-list share button) as the reference pattern for any future 'export/share' feature.",
+    "howTheUserDeploys": "User builds/zips mealbudgeter.html (as index.html) + icon.png into a versioned .zip (mealbudgeter_a1.N.zip), then imports it into the host app on their phone to test. This means: a change committed to mealbudgeter.html does NOT automatically reach the user's phone — they have to rebuild and reinstall the zip. If the user reports something 'still broken' shortly after a fix, consider asking whether they've rebuilt/reinstalled the zip before assuming the fix itself failed."
+  },
+
+  "devWorkflow": {
+    "browserPreview": "Use the Claude_Browser preview tools, NOT a manual server. .claude/launch.json has a 'mealbudgeter' config (python http.server, port 3134, serves the mealbudgeter/ directory) — preview_start with name 'mealbudgeter', then navigate to http://localhost:3134/mealbudgeter.html. A second config 'mealbudgeter-android-preview' (port 3135) serves mealbudgeter-android/www for spot-checking the synced copy.",
+    "afterAnyEdit": [
+      "1) Reload in the browser preview and check read_console_messages for errors (this app has caught real bugs this way — e.g. an HTML5 step= validation silently blocking form submits, and float-precision noise in summed quantities).",
+      "2) Exercise the actual feature via DOM/state inspection (javascript_tool) rather than assuming — this project has a history of subtle bugs (e.g. HTML5 min/step validation blocking submit with no visible error; toFixed()-related float noise) that only showed up under real interaction.",
+      "3) Re-sync: cp mealbudgeter/mealbudgeter.html mealbudgeter-android/www/index.html, then diff -q to confirm.",
+      "4) If the change shifted line numbers materially, regenerate app-map.json's line references.",
+      "5) Screenshots have been flaky in this session (Browser pane sometimes fails to composite frames) — DOM/text-based checks (get_page_text, javascript_tool reading element state) are reliable fallbacks and were used for most verification in the last iteration."
+    ],
+    "gitCommitScope": "Established, repeated pattern across several commits: stage and commit ONLY mealbudgeter/mealbudgeter.html, mealbudgeter-android/www/index.html, mealbudgeter/app-map.json (+ this HANDOFF.json going forward). Never commit .zip files or the loose staging index.html copies — the user has confirmed this scope ('source + map, no zips') multiple times.",
+    "branch": "feat/consvcoor-alpha — all Meal Budgeter work has landed here so far, alongside an unrelated eco-bahia scheduler project earlier in this branch's history. Check `git log --oneline` for the current tip before assuming state."
+  },
+
+  "featureHistoryCondensed": [
+    "Initial single-file scaffold: Pantry (CRUD + pricing), Recipe builder with live costing, Weekly Planner (fixed breakfast/lunch/dinner), Budget dashboard.",
+    "Recipe import from TheMealDB (public CORS-open API, no key) with a parse-and-review step for ingredient quantities/units.",
+    "Bilingual EN/ES i18n system (I18N.en/I18N.es objects + t(key,vars) + data-i18n attrs), Caribbean/Mediterranean color theme, RD$ currency with a showCents toggle, on-demand ingredient-name translation via MyMemory API.",
+    "Android port created (mealbudgeter-android/www/index.html) mirroring the sibling budgetos-android pattern in this workspace.",
+    "JSON export/import backup, printable/copyable Weekly Report modal.",
+    "Shopping list tab: auto-aggregated from the planner, editable (manual pantry-item additions, per-item removal/exclude with a Refresh-to-restore-all button), share via navigator.share with clipboard fallback, custom/insertable meal types (e.g. user added 'Drinks' before this was built in properly), per-meal serving quantities, a 🎲 Randomize-the-week button, a fix for float-precision noise in summed quantities (formatQty helper).",
+    "Food/Beverage category added to both ingredients and recipes; ability to plan a pantry item directly into a slot (not just via a recipe); a Home front-page tab with nav cards + a week-at-a-glance summary; icon-only tab bar on mobile.",
+    "LATEST iteration (this handoff): reworked the planner so every meal type is two physical table rows — a food-only 'Meal' row and an unrestricted 'Extra' row (beverage or a second food item) — so a beverage can genuinely accompany breakfast/lunch/snack/dinner, not just live in a separate 'Drinks' meal-type row. Also fixed the Export button, which was silently broken inside the html-runner-android WebView host (see hostEnvironment above) — replaced with a Share/Download/Copy modal."
+  ],
+
+  "knownLimitationsAndNonIssues": [
+    "Serving quantity in a planner slot is a whole number (min 1) — no fractional servings. Flagged to the user as an easy future tweak if ever needed; not requested yet.",
+    "The randomizer only fills 'Meal' rows from food-category items; it deliberately never touches the 'Extra' row (preserves whatever beverage/extra is already there). This is intentional, not a gap.",
+    "Ingredient/recipe/custom-meal-type names are NEVER auto-translated — only the explicit on-demand ingredient-translation feature touches those; i18n only covers the app's own UI chrome.",
+    "The loose index.html copies and old .zip files reappearing in mealbudgeter/ and mealbudgeter-android/ after the user rebuilds is expected user workflow, not something to 'fix' or silently delete without asking again next time.",
+    "Files are CRLF-normalized by git on commit (harmless warning each commit). A .gitattributes pinning `*.html text eol=lf` has been offered twice and declined/not-yet-actioned — don't re-litigate unless asked.",
+    "Screenshots via the Browser pane were unreliable in the most recent session (pane sometimes wouldn't composite frames) — don't assume a screenshot failure means the app is broken; fall back to DOM/console/state inspection, which worked reliably throughout."
+  ],
+
+  "openFollowUpsNotYetRequested": [
+    "A dedicated beverage TAB (separate top-level UI) was explicitly considered and declined in favor of the category+extra-row model now in place — don't re-propose it unless the user raises it again.",
+    "True native persistent storage (beyond localStorage) was discussed early on as the real fix for mobile data-loss risk, tied to a separate in-progress project 'bundlehub' (Capacitor shell for installing multiple mini-apps with real storage plugins) — out of scope for Meal Budgeter itself, just noted for context if the user brings up data loss again.",
+    "No outstanding bug reports as of this handoff — the last message was a combined 'commit, cleanout, push, handoff' instruction with no new feature ask attached."
+  ],
+
+  "howToStartNextSession": [
+    "1. Read mealbudgeter/app-map.json fully.",
+    "2. Run `git log --oneline -10` on feat/consvcoor-alpha to confirm you're looking at current state and nothing changed underneath you.",
+    "3. Run `git status --porcelain mealbudgeter/ mealbudgeter-android/` to see what build cruft has accumulated since (expected — not a problem to report).",
+    "4. If picking up a bug report, reproduce it via the browser preview + DOM/state inspection BEFORE proposing a fix — this codebase has had more than one bug that only manifested through actual interaction (HTML5 validation, float precision), not by reading the code."
+  ]
+}

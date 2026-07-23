@@ -192,11 +192,13 @@
   .planner-table th, .planner-table td { border: 1px solid var(--border); padding: 0.25rem; font-size: 0.72rem; vertical-align: top; white-space: normal; }
   .planner-table thead th { background: var(--bg); position: sticky; top: 0; font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.02em; }
   .planner-table th.meal-col, .planner-table td.meal-col {
-    position: sticky; left: 0; background: var(--bg); font-weight: 700; z-index: 1; white-space: nowrap; font-size: 0.72rem;
+    position: sticky; left: 0; background: var(--bg); font-weight: 700; z-index: 1; white-space: nowrap; font-size: 0.72rem; vertical-align: middle;
   }
+  .planner-table tr.mealtype-row-a td { border-bottom: none; }
+  .planner-table tr.mealtype-row-b td { border-top: none; }
   .slot-btn {
     width: 100%;
-    min-height: 38px;
+    min-height: 34px;
     background: none;
     border: 1px dashed var(--border);
     border-radius: 5px;
@@ -208,8 +210,9 @@
     color: var(--text-muted);
   }
   .slot-btn.filled { border-style: solid; border-color: var(--primary); color: var(--text); background: var(--primary-light); }
+  .slot-btn-extra { min-height: 28px; }
+  .slot-btn-extra.filled { border-color: var(--accent); background: var(--accent-light); }
   .slot-btn .slot-recipe { display: block; font-weight: 600; color: var(--text); }
-  .slot-btn .slot-drink { display: block; color: var(--accent-dark); margin-top: 0.1rem; }
   .slot-btn .slot-cost { display: block; font-size: 0.68rem; color: var(--primary-dark); margin-top: 0.1rem; font-weight: 600; }
 
   .slot-pick-row { display: flex; gap: 0.5rem; }
@@ -345,6 +348,23 @@
     white-space: pre-wrap;
     max-height: 50vh;
     overflow-y: auto;
+  }
+
+  .export-text {
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+    min-height: 220px;
+    resize: vertical;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 0.75rem;
+    margin: 0 0 0.75rem;
+    font-family: ui-monospace, "Courier New", monospace;
+    font-size: 0.72rem;
+    line-height: 1.5;
+    color: var(--text);
   }
 
   .tab-btn { display: inline-flex; align-items: center; gap: 0.4rem; }
@@ -671,21 +691,14 @@
   <div class="modal" id="slotModal" hidden>
     <h3 id="slotModalTitle">Assign</h3>
     <div class="field">
-      <label for="slotMealSelect" data-i18n="field_meal">🍽 Meal</label>
+      <label for="slotItemSelect" id="slotItemLabel">Item</label>
       <div class="slot-pick-row">
-        <select id="slotMealSelect" class="slot-pick-select"></select>
-        <input type="number" id="slotMealQty" class="slot-pick-qty" min="1" step="1" value="1" title="" aria-label="qty">
-      </div>
-    </div>
-    <div class="field">
-      <label for="slotDrinkSelect" data-i18n="field_drink">🥤 Beverage</label>
-      <div class="slot-pick-row">
-        <select id="slotDrinkSelect" class="slot-pick-select"></select>
-        <input type="number" id="slotDrinkQty" class="slot-pick-qty" min="1" step="1" value="1" aria-label="qty">
+        <select id="slotItemSelect" class="slot-pick-select"></select>
+        <input type="number" id="slotItemQty" class="slot-pick-qty" min="1" step="1" value="1" aria-label="qty">
       </div>
     </div>
     <div class="modal-actions">
-      <button type="button" class="btn btn-danger" id="slotClearBtn" data-i18n="btn_clear_slot">Clear Slot</button>
+      <button type="button" class="btn btn-danger" id="slotClearBtn" data-i18n="btn_clear_slot">Clear</button>
       <button type="button" class="btn" id="cancelSlotBtn" data-i18n="btn_cancel">Cancel</button>
       <button type="button" class="btn btn-primary" id="slotSaveBtn" data-i18n="btn_save">Save</button>
     </div>
@@ -745,6 +758,18 @@
     </div>
     <div class="modal-actions">
       <button type="button" class="btn btn-primary" id="closeSettingsBtn" data-i18n="btn_done">Done</button>
+    </div>
+  </div>
+
+  <div class="modal modal-wide" id="exportModal" hidden>
+    <h3 data-i18n="export_title">Export Backup</h3>
+    <p class="import-hint" data-i18n="export_hint">If the file doesn't download directly, use Share or Copy instead.</p>
+    <textarea id="exportText" class="export-text" readonly></textarea>
+    <div class="modal-actions">
+      <button type="button" class="btn" id="closeExportBtn" data-i18n="btn_close">Close</button>
+      <button type="button" class="btn" id="copyExportBtn" data-i18n="btn_copy">📋 Copy</button>
+      <button type="button" class="btn" id="downloadExportBtn" data-i18n="btn_download">⬇ Download</button>
+      <button type="button" class="btn btn-primary" id="shareExportBtn" data-i18n="btn_share">↗ Share</button>
     </div>
   </div>
 
@@ -848,7 +873,8 @@
       home_card_planner: "Plan meals across the week",
       home_card_shopping: "Your auto-built list to shop from",
       field_meal_qty: "Quantity (servings)",
-      field_meal: "🍽 Meal", field_drink: "🥤 Beverage", none_option: "— None —", btn_save: "Save",
+      field_meal: "🍽 Meal", field_extra: "🥤 Extra (beverage or more)", none_option: "— None —", btn_save: "Save",
+      add_extra: "+ Add",
       home_summary_title: "This week at a glance",
       btn_clear_slot: "Clear Slot", btn_assign: "Assign",
       th_meal: "Meal", day_total: "Day Total", add_slot: "+ Add",
@@ -925,6 +951,9 @@
       field_data: "Data",
       btn_export: "⬇ Export Backup",
       btn_import: "⬆ Import Backup",
+      export_title: "Export Backup",
+      export_hint: "If the file doesn't download directly, use Share or Copy instead.",
+      btn_download: "⬇ Download",
       import_invalid_file: "That doesn't look like a Meal Budgeter backup file.",
       confirm_import_overwrite: "Importing will replace all current data (pantry, recipes, planner). Continue?",
       import_success: "Backup imported successfully."
@@ -972,7 +1001,8 @@
       home_card_planner: "Planifica comidas durante la semana",
       home_card_shopping: "Tu lista de compras automática",
       field_meal_qty: "Cantidad (porciones)",
-      field_meal: "🍽 Comida", field_drink: "🥤 Bebida", none_option: "— Ninguno —", btn_save: "Guardar",
+      field_meal: "🍽 Comida", field_extra: "🥤 Extra (bebida u otro)", none_option: "— Ninguno —", btn_save: "Guardar",
+      add_extra: "+ Agregar",
       home_summary_title: "Resumen de la semana",
       btn_clear_slot: "Vaciar Espacio", btn_assign: "Asignar",
       th_meal: "Comida", day_total: "Total del Día", add_slot: "+ Agregar",
@@ -1049,6 +1079,9 @@
       field_data: "Datos",
       btn_export: "⬇ Exportar Respaldo",
       btn_import: "⬆ Importar Respaldo",
+      export_title: "Exportar Respaldo",
+      export_hint: "Si el archivo no se descarga directamente, usa Compartir o Copiar en su lugar.",
+      btn_download: "⬇ Descargar",
       import_invalid_file: "Ese archivo no parece ser un respaldo de Meal Budgeter.",
       confirm_import_overwrite: "Importar reemplazará todos los datos actuales (despensa, recetas, planificador). ¿Continuar?",
       import_success: "Respaldo importado exitosamente."
@@ -1699,13 +1732,11 @@
   const plannerTable = document.getElementById("plannerTable");
   const slotModal = document.getElementById("slotModal");
   const mealTypeModal = document.getElementById("mealTypeModal");
-  const slotMealSelect = document.getElementById("slotMealSelect");
-  const slotMealQty = document.getElementById("slotMealQty");
-  const slotDrinkSelect = document.getElementById("slotDrinkSelect");
-  const slotDrinkQty = document.getElementById("slotDrinkQty");
+  const slotItemSelect = document.getElementById("slotItemSelect");
+  const slotItemQty = document.getElementById("slotItemQty");
   const budgetGoalInput = document.getElementById("budgetGoalInput");
 
-  let activeSlot = null; // { day, mealTypeId }
+  let activeSlot = null; // { day, mealTypeId, part } — part is "meal" or "drink"
 
   function dayCost(day) {
     return state.mealTypes.reduce((sum, mt) => sum + slotCost(state.mealPlan[day][mt.id]), 0);
@@ -1724,23 +1755,31 @@
     DAYS.forEach(day => { html += `<th>${dayLabel(day)}</th>`; });
     html += "</tr></thead><tbody>";
 
+    // Each meal type gets TWO physical rows: "Meal" (food-only) and "Extra" (unrestricted
+    // — a beverage, or a second food/ingredient). The meal-col label spans both via rowspan,
+    // acting as the title for that 2-row block.
     sortedMealTypes().forEach(mt => {
       const removeBtn = !mt.labelKey
         ? ` <button type="button" class="meal-remove-btn" data-mealtype="${mt.id}" title="${t("remove_meal_type")}">✕</button>`
         : "";
-      html += `<tr><td class="meal-col">${escapeHtml(mealTypeLabel(mt))}${removeBtn}</td>`;
+      html += `<tr class="mealtype-row-a"><td class="meal-col" rowspan="2">${escapeHtml(mealTypeLabel(mt))}${removeBtn}</td>`;
       DAYS.forEach(day => {
-        const slot = state.mealPlan[day][mt.id];
-        const m = resolveRef(slotMeal(slot)), d = resolveRef(slotDrink(slot));
-        const filled = !!(m || d);
-        html += `<td><button class="slot-btn${filled ? " filled" : ""}" data-day="${day}" data-mealtype="${mt.id}">`;
-        if (filled) {
-          if (m) html += `<span class="slot-recipe">${catIcon(m)}${escapeHtml(m.name)}${m.qty > 1 ? ` ×${m.qty}` : ""}</span>`;
-          if (d) html += `<span class="slot-drink">🥤 ${escapeHtml(d.name)}${d.qty > 1 ? ` ×${d.qty}` : ""}</span>`;
-          html += `<span class="slot-cost">${formatCurrency(slotCost(slot), { totals: true })}</span>`;
-        } else {
-          html += t("add_slot");
-        }
+        const m = resolveRef(slotMeal(state.mealPlan[day][mt.id]));
+        html += `<td><button class="slot-btn${m ? " filled" : ""}" data-day="${day}" data-mealtype="${mt.id}" data-part="meal">`;
+        html += m
+          ? `<span class="slot-recipe">${catIcon(m)}${escapeHtml(m.name)}${m.qty > 1 ? ` ×${m.qty}` : ""}</span><span class="slot-cost">${formatCurrency(m.cost, { totals: true })}</span>`
+          : t("add_slot");
+        html += "</button></td>";
+      });
+      html += "</tr>";
+
+      html += `<tr class="mealtype-row-b">`;
+      DAYS.forEach(day => {
+        const d = resolveRef(slotDrink(state.mealPlan[day][mt.id]));
+        html += `<td><button class="slot-btn slot-btn-extra${d ? " filled" : ""}" data-day="${day}" data-mealtype="${mt.id}" data-part="drink">`;
+        html += d
+          ? `<span class="slot-recipe">${catIcon(d)}${escapeHtml(d.name)}${d.qty > 1 ? ` ×${d.qty}` : ""}</span><span class="slot-cost">${formatCurrency(d.cost, { totals: true })}</span>`
+          : t("add_extra");
         html += "</button></td>";
       });
       html += "</tr>";
@@ -1754,7 +1793,7 @@
     plannerTable.innerHTML = html;
 
     plannerTable.querySelectorAll(".slot-btn").forEach(btn => {
-      btn.addEventListener("click", () => openSlotModal(btn.dataset.day, btn.dataset.mealtype));
+      btn.addEventListener("click", () => openSlotModal(btn.dataset.day, btn.dataset.mealtype, btn.dataset.part));
     });
     plannerTable.querySelectorAll(".meal-remove-btn").forEach(btn => {
       btn.addEventListener("click", (e) => {
@@ -1764,23 +1803,26 @@
     });
   }
 
-  // Fills a slot <select> with recipes + pantry items of one category (food for the
-  // meal picker, beverage for the drink picker). Option values prefixed "r:"/"i:".
+  // Fills a slot <select> with recipes + pantry items. category "food"/"beverage"
+  // filters to that category (the Meal row); category null shows everything
+  // unfiltered (the Extra row — a beverage, or a second food/ingredient item).
+  // Option values prefixed "r:"/"i:".
   function fillSlotSelect(select, category) {
     select.innerHTML = "";
     const noneOpt = document.createElement("option");
     noneOpt.value = "";
     noneOpt.textContent = t("none_option");
     select.appendChild(noneOpt);
-    const recipes = state.recipes.filter(r => (r.category || "food") === category);
-    const ings = state.ingredients.filter(i => (i.category || "food") === category);
+    const matches = (item) => category === null || (item.category || "food") === category;
+    const recipes = state.recipes.filter(matches);
+    const ings = state.ingredients.filter(matches);
     if (recipes.length) {
       const og = document.createElement("optgroup");
       og.label = t("optgroup_recipes");
       recipes.slice().sort((a, b) => a.name.localeCompare(b.name)).forEach(recipe => {
         const opt = document.createElement("option");
         opt.value = "r:" + recipe.id;
-        opt.textContent = `${recipe.name} — ${formatCurrency(recipeCost(recipe), { totals: true })}`;
+        opt.textContent = `${catIcon(recipe)}${recipe.name} — ${formatCurrency(recipeCost(recipe), { totals: true })}`;
         og.appendChild(opt);
       });
       select.appendChild(og);
@@ -1791,25 +1833,26 @@
       ings.slice().sort((a, b) => ingredientDisplayName(a).localeCompare(ingredientDisplayName(b))).forEach(ing => {
         const opt = document.createElement("option");
         opt.value = "i:" + ing.id;
-        opt.textContent = `${ingredientDisplayName(ing)} (${ing.unit}) — ${formatCurrency(ing.pricePerUnit)}`;
+        opt.textContent = `${catIcon(ing)}${ingredientDisplayName(ing)} (${ing.unit}) — ${formatCurrency(ing.pricePerUnit)}`;
         og.appendChild(opt);
       });
       select.appendChild(og);
     }
   }
 
-  function openSlotModal(day, mealTypeId) {
+  function openSlotModal(day, mealTypeId, part) {
     if (state.recipes.length === 0 && state.ingredients.length === 0) return;
-    activeSlot = { day, mealTypeId };
-    document.getElementById("slotModalTitle").textContent = `${mealTypeLabel(findMealType(mealTypeId))} — ${dayLabel(day)}`;
-    fillSlotSelect(slotMealSelect, "food");
-    fillSlotSelect(slotDrinkSelect, "beverage");
+    activeSlot = { day, mealTypeId, part };
+    const partLabel = part === "meal" ? t("field_meal") : t("field_extra");
+    document.getElementById("slotModalTitle").textContent = `${partLabel} — ${mealTypeLabel(findMealType(mealTypeId))} — ${dayLabel(day)}`;
+    document.getElementById("slotItemLabel").textContent = partLabel;
+    // Meal row stays food-only (keeps the randomizer's semantics simple and the
+    // row a clear "what's the meal" choice); Extra row is unrestricted.
+    fillSlotSelect(slotItemSelect, part === "meal" ? "food" : null);
     const slot = state.mealPlan[day][mealTypeId];
-    const m = slotMeal(slot), d = slotDrink(slot);
-    slotMealSelect.value = refToVal(m);
-    slotMealQty.value = refQty(m);
-    slotDrinkSelect.value = refToVal(d);
-    slotDrinkQty.value = refQty(d);
+    const ref = part === "meal" ? slotMeal(slot) : slotDrink(slot);
+    slotItemSelect.value = refToVal(ref);
+    slotItemQty.value = refQty(ref);
     openModal(slotModal);
   }
 
@@ -1868,9 +1911,10 @@
 
   document.getElementById("slotSaveBtn").addEventListener("click", () => {
     if (!activeSlot) return;
-    const meal = valToRef(slotMealSelect.value, slotMealQty);
-    const drink = valToRef(slotDrinkSelect.value, slotDrinkQty);
-    state.mealPlan[activeSlot.day][activeSlot.mealTypeId] = (meal || drink) ? { meal, drink } : null;
+    const ref = valToRef(slotItemSelect.value, slotItemQty);
+    const cur = state.mealPlan[activeSlot.day][activeSlot.mealTypeId] || { meal: null, drink: null };
+    const next = activeSlot.part === "meal" ? { meal: ref, drink: cur.drink } : { meal: cur.meal, drink: ref };
+    state.mealPlan[activeSlot.day][activeSlot.mealTypeId] = slotFilled(next) ? next : null;
     saveState();
     closeModals();
     renderAll();
@@ -1878,7 +1922,9 @@
 
   document.getElementById("slotClearBtn").addEventListener("click", () => {
     if (!activeSlot) return;
-    state.mealPlan[activeSlot.day][activeSlot.mealTypeId] = null;
+    const cur = state.mealPlan[activeSlot.day][activeSlot.mealTypeId] || { meal: null, drink: null };
+    const next = activeSlot.part === "meal" ? { meal: null, drink: cur.drink } : { meal: cur.meal, drink: null };
+    state.mealPlan[activeSlot.day][activeSlot.mealTypeId] = slotFilled(next) ? next : null;
     saveState();
     closeModals();
     renderAll();
@@ -2282,15 +2328,61 @@
     renderAll();
   });
 
+  // Export — shown as a modal with three explicit options rather than a single
+  // "click to download" action. This app is often hosted inside a plain WebView
+  // container (an Android launcher that navigates its WebView to this file with
+  // no browser chrome and no download manager — see html-runner-android), where
+  // an <a download> click silently does nothing. Share/Copy always work there;
+  // Download is a bonus that works in a real browser.
+  const exportModal = document.getElementById("exportModal");
+  const exportText = document.getElementById("exportText");
+
+  function exportFilename() {
+    return `mealbudgeter-${new Date().toISOString().slice(0, 10)}.json`;
+  }
+
   document.getElementById("exportDataBtn").addEventListener("click", () => {
-    const blob = new Blob([JSON.stringify(state, null, 2)], { type: "application/json" });
+    exportText.value = JSON.stringify(state, null, 2);
+    document.getElementById("shareExportBtn").hidden = !navigator.share;
+    openModal(exportModal);
+  });
+  document.getElementById("closeExportBtn").addEventListener("click", closeModals);
+
+  document.getElementById("copyExportBtn").addEventListener("click", () => {
+    const btn = document.getElementById("copyExportBtn");
+    const original = btn.textContent;
+    navigator.clipboard.writeText(exportText.value).then(() => {
+      btn.textContent = t("copied_feedback");
+      setTimeout(() => { btn.textContent = original; }, 1500);
+    }).catch(() => alert(t("copy_error")));
+  });
+
+  document.getElementById("downloadExportBtn").addEventListener("click", () => {
+    const blob = new Blob([exportText.value], { type: "application/json" });
     const url = URL.createObjectURL(blob);
-    const a = Object.assign(document.createElement("a"), {
-      href: url,
-      download: `mealbudgeter-${new Date().toISOString().slice(0, 10)}.json`
-    });
+    const a = Object.assign(document.createElement("a"), { href: url, download: exportFilename() });
+    document.body.appendChild(a);
     a.click();
+    a.remove();
     URL.revokeObjectURL(url);
+  });
+
+  document.getElementById("shareExportBtn").addEventListener("click", async () => {
+    const filename = exportFilename();
+    try {
+      if (navigator.canShare && window.File) {
+        const file = new File([exportText.value], filename, { type: "application/json" });
+        if (navigator.canShare({ files: [file] })) {
+          await navigator.share({ files: [file], title: filename });
+          return;
+        }
+      }
+      if (navigator.share) {
+        await navigator.share({ title: filename, text: exportText.value });
+      }
+    } catch (err) {
+      /* AbortError = user dismissed the share sheet; nothing to do */
+    }
   });
 
   document.getElementById("importDataFile").addEventListener("change", (e) => {
